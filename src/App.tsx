@@ -20,6 +20,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export default function App() {
   const [ready, setReady] = useState(false)
+  const [toast, setToast] = useState('')
   const [unlocked, setUnlocked] = useState(false)
   const [tab, setTab] = useState<Tab>('today')
   const [date, setDate] = useState<ISODate>(todayISO())
@@ -65,6 +66,11 @@ export default function App() {
     await putSettings(s)
   }, [])
 
+  const showVersion = () => {
+    setToast(`Versie ${__APP_VERSION__} — dit is wat er nu op dit toestel draait`)
+    setTimeout(() => setToast(''), 3000)
+  }
+
   if (!ready || !profile || !settings) return null
 
   if (!unlocked) {
@@ -85,6 +91,9 @@ export default function App() {
               <span style={{ textTransform: 'capitalize' }}>
                 {isToday ? 'Vandaag' : formatDate(date).split(' ')[0]}
               </span>
+              <span className="app-version" onClick={showVersion}>
+                v{__APP_VERSION__}
+              </span>
               <span className="sub" style={{ display: 'block' }}>
                 {formatDate(date)}
               </span>
@@ -98,7 +107,12 @@ export default function App() {
             </button>
           </>
         ) : (
-          <h1>{TABS.find((t) => t.id === tab)!.label}</h1>
+          <h1>
+            {TABS.find((t) => t.id === tab)!.label}
+            <span className="app-version" onClick={showVersion}>
+              v{__APP_VERSION__}
+            </span>
+          </h1>
         )}
       </header>
 
@@ -134,6 +148,8 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }

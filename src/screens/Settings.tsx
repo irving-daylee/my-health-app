@@ -3,7 +3,7 @@ import type { DayEntry, Profile, Settings } from '../types'
 import { Card, NumberField, TextField } from '../components/inputs'
 import { exportAll, importAll } from '../lib/db'
 import { ageAt, todayISO } from '../lib/derive'
-import { biometricsAvailable, hashPin, registerBiometrics } from '../lib/lock'
+import { PIN_LENGTH, biometricsAvailable, hashPin, registerBiometrics } from '../lib/lock'
 import { claudeSummary } from '../lib/share'
 
 type Props = {
@@ -157,9 +157,10 @@ export default function SettingsScreen({
           <input
             type="password"
             inputMode="numeric"
-            placeholder="Nieuwe PIN"
+            placeholder={`Nieuwe PIN (${PIN_LENGTH} cijfers)`}
+            maxLength={PIN_LENGTH}
             value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))}
             style={{
               border: '1px solid var(--grey-200)',
               borderRadius: 10,
@@ -168,7 +169,7 @@ export default function SettingsScreen({
               minWidth: 140,
             }}
           />
-          <button className="btn" disabled={pin.length < 4} onClick={setPinCode}>
+          <button className="btn" disabled={pin.length !== PIN_LENGTH} onClick={setPinCode}>
             Instellen
           </button>
         </div>

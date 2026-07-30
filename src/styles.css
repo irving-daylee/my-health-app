@@ -427,6 +427,10 @@ textarea {
   border-bottom: 0;
 }
 
+.meal-top + .meal-top {
+  margin-top: 8px;
+}
+
 .meal-top {
   display: flex;
   align-items: center;
@@ -529,47 +533,172 @@ textarea {
   color: var(--good);
 }
 
-/* ---------- lock ---------- */
+/* ---------- pin lock ---------- */
 
-.lock {
-  min-height: 100vh;
+.pin-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   background: var(--navy);
   color: var(--white);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 6px;
   padding: 24px;
   text-align: center;
 }
 
-.lock input {
-  width: 200px;
-  text-align: center;
-  font-size: 26px;
-  letter-spacing: 0.3em;
-  padding: 12px;
-  border-radius: 12px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--white);
+.pin-lock h1 {
+  font-size: 22px;
 }
 
-.lock input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.2em;
+.pin-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
 }
 
-.lock .btn {
+.pin-dots {
+  display: flex;
+  gap: 12px;
+  margin: 18px 0 6px;
+}
+
+.pin-dots .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.15s ease;
+}
+
+.pin-dots .dot.filled {
   background: var(--white);
-  color: var(--navy);
+  border-color: var(--white);
 }
 
-.lock .msg {
+.pin-dots .dot.error {
+  background: var(--bad);
+  border-color: var(--bad);
+}
+
+.pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.pin-key {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 24px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pin-key:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pin-key.empty {
+  border-color: transparent;
+  pointer-events: none;
+}
+
+.pin-key.backspace {
+  font-size: 19px;
+  border-color: transparent;
+}
+
+.pin-biometric {
+  margin-top: 18px;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pin-msg {
   font-size: 13px;
   min-height: 20px;
-  opacity: 0.85;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.shake {
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+/* ---------- version badge + toast ---------- */
+
+/* Zo zie je op je telefoon meteen of de nieuwste versie geladen is. */
+.app-version {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.5;
+  margin-left: 7px;
+  vertical-align: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(86px + var(--safe-bottom));
+  z-index: 40;
+  max-width: min(420px, calc(100vw - 32px));
+  background: var(--navy-800);
+  color: var(--white);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(18, 40, 76, 0.28);
+  animation: rise 0.2s ease;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .empty {

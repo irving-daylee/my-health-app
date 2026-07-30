@@ -6,6 +6,9 @@
 
 const SALT = 'gezondheid-pin-v1'
 
+/** Vier cijfers, net als in de andere apps — de keypad is daarop gebouwd. */
+export const PIN_LENGTH = 4
+
 export async function hashPin(pin: string): Promise<string> {
   const bytes = new TextEncoder().encode(SALT + pin)
   const digest = await crypto.subtle.digest('SHA-256', bytes)
