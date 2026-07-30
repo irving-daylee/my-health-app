@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/components/inputs.tsx","./src/lib/db.ts","./src/lib/derive.ts","./src/lib/insights.ts","./src/lib/lock.ts","./src/lib/share.ts","./src/screens/insights.tsx","./src/screens/lock.tsx","./src/screens/settings.tsx","./src/screens/today.tsx","./src/screens/trends.tsx"],"version":"5.9.3"}
