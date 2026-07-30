@@ -99,8 +99,12 @@ export function dayDelta(days: DayEntry[], date: ISODate): number | null {
   return Math.round((points[idx].body.weightKg! - points[idx - 1].body.weightKg!) * 100) / 100
 }
 
+/** Nederlandse notatie: komma als decimaalteken. */
+export const nl = (n: number, digits = 1) =>
+  n.toLocaleString('nl-NL', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+
 export const fmt = (n: number | null | undefined, digits = 0, unit = '') =>
-  n == null || Number.isNaN(n) ? '—' : `${n.toFixed(digits)}${unit ? ' ' + unit : ''}`
+  n == null || Number.isNaN(n) ? '—' : `${nl(n, digits)}${unit ? ' ' + unit : ''}`
 
 export const signed = (n: number | null | undefined, digits = 1, unit = '') =>
-  n == null ? '—' : `${n > 0 ? '+' : ''}${n.toFixed(digits)}${unit ? ' ' + unit : ''}`
+  n == null ? '—' : `${n > 0 ? '+' : ''}${nl(n, digits)}${unit ? ' ' + unit : ''}`

@@ -1,5 +1,19 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
+/** "74,6" en "74.6" leveren allebei 74.6 op; onvolledige invoer geeft null. */
+export function parseDecimal(raw: string): number | null {
+  const cleaned = raw.replace(',', '.')
+  if (cleaned === '' || cleaned === '-' || cleaned === '.' || cleaned === '-.') return null
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Een `type="number"`-veld weigert de komma op een Nederlands toetsenbord: zodra
+ * je die typt wordt de waarde leeg. Daarom een tekstveld met een decimaal
+ * toetsenbord, dat tijdens het typen de ruwe tekst vasthoudt en pas bij het
+ * verlaten opschoont.
+ */
 export function NumberField(props: {
   label: string
   value: number | undefined
@@ -8,6 +22,26 @@ export function NumberField(props: {
   unit?: string
   placeholder?: string
 }) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const shown = draft ?? (props.value == null ? '' : String(props.value).replace('.', ','))
+
+  const handle = (raw: string) => {
+    // cijfers, één scheidingsteken, optioneel minteken vooraan
+    const filtered = raw
+      .replace(/[^\d.,-]/g, '')
+      .replace(/(?!^)-/g, '')
+      .replace(/([.,])(?=.*[.,])/g, '')
+    setDraft(filtered)
+
+    if (filtered.trim() === '') {
+      props.onChange(undefined)
+      return
+    }
+    const parsed = parseDecimal(filtered)
+    if (parsed != null) props.onChange(parsed)
+  }
+
   return (
     <div className="field">
       <label>
@@ -15,12 +49,15 @@ export function NumberField(props: {
         {props.unit ? ` (${props.unit})` : ''}
       </label>
       <input
-        type="number"
+        type="text"
         inputMode="decimal"
-        step={props.step ?? 1}
+        enterKeyHint="done"
+        autoComplete="off"
         placeholder={props.placeholder}
-        value={props.value ?? ''}
-        onChange={(e) => props.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+        value={shown}
+        onChange={(e) => handle(e.target.value)}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={() => setDraft(null)}
       />
     </div>
   )

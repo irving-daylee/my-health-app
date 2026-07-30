@@ -7,6 +7,7 @@ import {
   dayDelta,
   estimatedBmr,
   fmt,
+  nl,
   intakeKcal,
   signed,
   sleepHours,
@@ -37,7 +38,7 @@ export default function Today({ day, days, profile, onSave }: Props) {
       <section className="hero">
         <div className="label">Gewicht</div>
         <div className="value">
-          {day.body.weightKg != null ? day.body.weightKg.toFixed(1) : '—'}
+          {day.body.weightKg != null ? nl(day.body.weightKg, 1) : '—'}
           <small>kg</small>
         </div>
         <div className="meta">
@@ -192,13 +193,13 @@ export default function Today({ day, days, profile, onSave }: Props) {
           <div className="grid" style={{ marginTop: 12 }}>
             <div className="stat">
               <div className="k">BMI</div>
-              <div className="v">{bmi(profile, day.body.weightKg).toFixed(1)}</div>
+              <div className="v">{nl(bmi(profile, day.body.weightKg), 1)}</div>
             </div>
             {day.body.fatMassKg != null && (
               <div className="stat">
                 <div className="k">Vetvrije massa</div>
                 <div className="v">
-                  {(day.body.weightKg - day.body.fatMassKg).toFixed(1)}
+                  {nl(day.body.weightKg - day.body.fatMassKg, 1)}
                   <small>kg</small>
                 </div>
               </div>
@@ -343,13 +344,14 @@ function FoodCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => voi
           />
           <input
             className="meal-kcal"
-            type="number"
+            type="text"
             inputMode="numeric"
             placeholder="kcal"
             value={m.kcal ?? ''}
-            onChange={(e) =>
-              update(m.id, { kcal: e.target.value === '' ? undefined : Number(e.target.value) })
-            }
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, '')
+              update(m.id, { kcal: digits === '' ? undefined : Number(digits) })
+            }}
           />
           <button
             className="remove"

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { DayEntry, Profile } from '../types'
 import { Card } from '../components/inputs'
-import { balance, burned, signed, sleepHours, trendDelta, weighIns, weightTrend } from '../lib/derive'
+import { balance, burned, nl, signed, sleepHours, trendDelta, weighIns, weightTrend } from '../lib/derive'
 
 const RANGES = [
   { label: '30 dagen', days: 30 },
@@ -125,7 +125,7 @@ export default function Trends({ days, profile }: { days: DayEntry[]; profile: P
           <div className="stat">
             <div className="k">Slaap</div>
             <div className="v">
-              {avgSleep == null ? '—' : avgSleep.toFixed(1)}
+              {avgSleep == null ? '—' : nl(avgSleep, 1)}
               <small>uur</small>
             </div>
           </div>
@@ -209,7 +209,7 @@ function LineChart({
             strokeWidth={1}
           />
           <text x={W - pad.right + 6} y={y(t) + 4} fontSize={11} fill="var(--grey-600)">
-            {t.toFixed(1)}
+            {nl(t, 1)}
           </text>
         </g>
       ))}
