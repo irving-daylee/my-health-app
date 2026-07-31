@@ -1,9 +1,25 @@
 import type { DayEntry, Profile } from '../types'
 import { Card } from '../components/inputs'
 import { generateInsights } from '../lib/insights'
+import { sleepNote, suggestGoals, type Suggestion } from '../lib/goals'
 
-export default function Insights({ days, profile }: { days: DayEntry[]; profile: Profile }) {
+export default function Insights({
+  days,
+  profile,
+  onProfile,
+}: {
+  days: DayEntry[]
+  profile: Profile
+  onProfile: (p: Profile) => void
+}) {
   const sections = generateInsights(days, profile)
+  const suggesties = suggestGoals(days, profile).filter((s) => s.value !== s.current)
+  const slaap = sleepNote(days)
+
+  const overnemen = (s: Suggestion) => {
+    if (s.key === 'calories') onProfile({ ...profile, calorieGoalKcal: s.value })
+    if (s.key === 'water') onProfile({ ...profile, waterGoalMl: s.value })
+  }
 
   if (days.length < 3) {
     return (
@@ -29,6 +45,41 @@ export default function Insights({ days, profile }: { days: DayEntry[]; profile:
 
   return (
     <>
+      {(suggesties.length > 0 || slaap) && (
+        <Card title="Voorgestelde doelen">
+          {suggesties.map((s) => (
+            <article className="goal-suggestion" key={s.key}>
+              <span className="insight-tag">{s.basis}</span>
+              <h4>
+                {s.label}: {s.value.toLocaleString('nl-NL')} {s.unit}
+              </h4>
+              <p>{s.why}</p>
+              <div className="goal-suggestion-foot">
+                <span className="note">
+                  Nu {s.current.toLocaleString('nl-NL')} {s.unit}
+                </span>
+                <button className="btn secondary" onClick={() => overnemen(s)}>
+                  Overnemen
+                </button>
+              </div>
+            </article>
+          ))}
+
+          {slaap && (
+            <article className="goal-suggestion">
+              <h4>Slaap</h4>
+              <p>{slaap.text}</p>
+            </article>
+          )}
+
+          <p className="note" style={{ marginTop: 12 }}>
+            Voorstellen, geen instellingen — er verandert niets tot je op Overnemen tikt. Dit zijn
+            algemene richtlijnen; heb je een medische reden om op je voeding te letten, overleg dan
+            met je huisarts of diëtist.
+          </p>
+        </Card>
+      )}
+
       {sections.map((sec) => (
         <Card key={sec.title} title={sec.title}>
           {sec.insights.map((ins, i) => (

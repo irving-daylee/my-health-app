@@ -1004,3 +1004,64 @@ textarea {
 .goal-fill.over {
   background: var(--warn);
 }
+
+/* ---------- voorgestelde doelen ---------- */
+
+.goal-suggestion {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--grey-200);
+}
+
+.goal-suggestion:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.goal-suggestion-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.goal-suggestion h4 {
+  margin: 4px 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.goal-suggestion p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--grey-600);
+}
+
+.goal-suggestion .note {
+  margin: 0;
+}
+
+.goal-suggestion-foot button {
+  flex: none;
+}
+
+/* Periodekeuze bij Trends: op smalle schermen horizontaal scrollen in plaats
+   van over twee rijen breken. */
+.range-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.range-picker::-webkit-scrollbar {
+  display: none;
+}
+
+.range-picker .chip {
+  flex: none;
+}

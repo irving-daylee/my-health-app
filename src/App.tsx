@@ -188,7 +188,9 @@ export default function App() {
       <main className="content">
         {tab === 'today' && <Today day={day} days={days} profile={profile} onSave={saveDay} />}
         {tab === 'trends' && <Trends days={days} profile={profile} />}
-        {tab === 'insights' && <Insights days={days} profile={profile} />}
+        {tab === 'insights' && (
+          <Insights days={days} profile={profile} onProfile={saveProfile} />
+        )}
         {tab === 'settings' && (
           <SettingsScreen
             profile={profile}

@@ -4,6 +4,9 @@ import { Card } from '../components/inputs'
 import { balance, burned, nl, signed, sleepHours, trendDelta, weighIns, weightTrend } from '../lib/derive'
 
 const RANGES = [
+  { label: '1 dag', days: 2 },
+  { label: '7 dagen', days: 7 },
+  { label: '14 dagen', days: 14 },
   { label: '30 dagen', days: 30 },
   { label: '90 dagen', days: 90 },
   { label: 'Alles', days: 100000 },
@@ -39,7 +42,7 @@ export default function Trends({ days, profile }: { days: DayEntry[]; profile: P
 
   return (
     <>
-      <div className="checkline">
+      <div className="range-picker">
         {RANGES.map((r) => (
           <button
             key={r.days}
