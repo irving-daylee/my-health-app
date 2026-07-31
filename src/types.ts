@@ -88,6 +88,10 @@ export type Profile = {
   waterGoalMl: number
   /** dagelijks caloriedoel voor de voortgangsbalk bij eten en drinken */
   calorieGoalKcal: number
+  /** beweegminuten per week */
+  exerciseGoalWeek: number
+  /** krachttrainingen per week */
+  strengthGoalWeek: number
   /** nodig voor de BMR-schatting; blijft leeg tot je 'm zelf invult */
   sex?: Sex
 }
@@ -135,6 +139,8 @@ export const defaultProfile: Profile = {
   targetWeightKg: 74.0,
   waterGoalMl: 2500,
   calorieGoalKcal: 2000,
+  exerciseGoalWeek: 150,
+  strengthGoalWeek: 2,
 }
 
 export const defaultSettings: Settings = {}

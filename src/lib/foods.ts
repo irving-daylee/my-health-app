@@ -81,7 +81,9 @@ export function learnFromDay(day: DayEntry, known: FoodItem[]): FoodItem[] {
 
   for (const meal of day.meals) {
     const name = meal.name?.trim()
-    if (!name || !meal.kcal || meal.kcal <= 0) continue
+    // Namen van een of twee tekens zijn zo goed als altijd een tussenstand van
+    // iets langers, geen item dat je wilt terugzien.
+    if (!name || name.length < 3 || !meal.kcal || meal.kcal <= 0) continue
 
     const key = foodKey(name)
     const existing = byKey.get(key)

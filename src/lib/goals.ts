@@ -1,12 +1,20 @@
 import type { DayEntry, Profile } from '../types'
-import { burned, estimatedBmr, intakeKcal, sleepHours, weighIns, weightTrend } from './derive'
+import {
+  burned,
+  estimatedBmr,
+  intakeKcal,
+  sleepHours,
+  weighIns,
+  weightTrend,
+  workoutMinutes,
+} from './derive'
 
 const KCAL_PER_KG = 7700
 const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length
 const round = (n: number, step: number) => Math.round(n / step) * step
 
 export type Suggestion = {
-  key: 'calories' | 'water'
+  key: 'calories' | 'water' | 'exercise' | 'strength'
   label: string
   value: number
   unit: string
@@ -111,8 +119,53 @@ export function suggestGoals(days: DayEntry[], profile: Profile) {
     })
   }
 
+  // ---------- beweegminuten ----------
+  const weken = Math.max(days.length / 7, 1)
+  const minutenPerWeek = Math.round(
+    days.reduce((sum, d) => sum + Math.max(workoutMinutes(d), d.exerciseMin ?? 0), 0) / weken,
+  )
+  if (days.length >= 7) {
+    // De richtlijn is 150 minuten. Haal je dat al, dan is een klein stapje
+    // zinvoller dan een rond getal dat ver boven je huidige gewoonte ligt.
+    const doel =
+      minutenPerWeek < 150 ? 150 : round(Math.min(minutenPerWeek * 1.1, minutenPerWeek + 60), 15)
+    suggestions.push({
+      key: 'exercise',
+      label: 'Beweegdoel',
+      value: doel,
+      unit: 'min/week',
+      current: profile.exerciseGoalWeek,
+      why:
+        minutenPerWeek < 150
+          ? `Je zit nu op ongeveer ${minutenPerWeek} minuten per week. De gangbare richtlijn is 150 minuten matige inspanning; dat is het eerste doel om te halen.`
+          : `Je haalt nu ongeveer ${minutenPerWeek} minuten per week, ruim boven de richtlijn van 150. Een stapje erbij is realistischer dan een groot rond getal.`,
+      basis: 'gemeten',
+    })
+  }
+
+  // ---------- krachttraining ----------
+  const krachtDagen = days.filter((d) => d.workouts.some((w) => w.type === 'krachttraining')).length
+  if (days.length >= 7) {
+    const perWeek = Math.round((krachtDagen / weken) * 10) / 10
+    const doel = perWeek < 2 ? 2 : Math.min(Math.ceil(perWeek), 4)
+    suggestions.push({
+      key: 'strength',
+      label: 'Krachttraining',
+      value: doel,
+      unit: 'keer/week',
+      current: profile.strengthGoalWeek,
+      why:
+        perWeek < 2
+          ? `Je doet nu ongeveer ${nfLocal(perWeek)} keer per week krachttraining. Twee keer is de gangbare ondergrens om je spiermassa te behouden terwijl je afvalt — dit is de belangrijkste rem op spierverlies.`
+          : `Je doet nu ongeveer ${nfLocal(perWeek)} keer per week krachttraining. Dat is voldoende om je spiermassa te beschermen tijdens een tekort.`,
+      basis: 'gemeten',
+    })
+  }
+
   return suggestions
 }
+
+const nfLocal = (n: number) => n.toLocaleString('nl-NL')
 
 export function sleepNote(days: DayEntry[]): SleepNote | null {
   const uren = days.map(sleepHours).filter((h): h is number => h != null)

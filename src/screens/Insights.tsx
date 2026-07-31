@@ -19,6 +19,8 @@ export default function Insights({
   const overnemen = (s: Suggestion) => {
     if (s.key === 'calories') onProfile({ ...profile, calorieGoalKcal: s.value })
     if (s.key === 'water') onProfile({ ...profile, waterGoalMl: s.value })
+    if (s.key === 'exercise') onProfile({ ...profile, exerciseGoalWeek: s.value })
+    if (s.key === 'strength') onProfile({ ...profile, strengthGoalWeek: s.value })
   }
 
   if (days.length < 3) {

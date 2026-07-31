@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { DayEntry, Profile, Settings } from '../types'
 import { Card, NumberField } from '../components/inputs'
-import { exportAll, importAll } from '../lib/db'
+import { allFoods, deleteFood, exportAll, importAll, putFoods } from '../lib/db'
+import { foodKey, type FoodItem } from '../lib/foods'
 import { ageAt, birthDateForAge, todayISO } from '../lib/derive'
 import { PIN_LENGTH, biometricsAvailable, hashPin, registerBiometrics } from '../lib/lock'
 import { claudeSummary } from '../lib/share'
@@ -165,6 +166,19 @@ export default function SettingsScreen({
             onChange={(v) => v && onProfile({ ...profile, calorieGoalKcal: v })}
           />
           <NumberField
+            label="Beweegdoel"
+            unit="min/week"
+            step={15}
+            value={profile.exerciseGoalWeek}
+            onChange={(v) => v && onProfile({ ...profile, exerciseGoalWeek: v })}
+          />
+          <NumberField
+            label="Krachttraining"
+            unit="keer/week"
+            value={profile.strengthGoalWeek}
+            onChange={(v) => v && onProfile({ ...profile, strengthGoalWeek: v })}
+          />
+          <NumberField
             label="Waterdoel"
             unit="ml"
             step={100}
@@ -194,6 +208,8 @@ export default function SettingsScreen({
           wordt die simpelweg niet getoond.
         </p>
       </Card>
+
+      <FoodsCard />
 
       <Card title="Slot">
         <p className="note" style={{ marginBottom: 12 }}>
@@ -286,5 +302,75 @@ export default function SettingsScreen({
 
       {msg && <p className="note">{msg}</p>}
     </>
+  )
+}
+
+
+/* ---------------- beheer van je itemlijst ---------------- */
+
+function FoodsCard() {
+  const [foods, setFoods] = useState<FoodItem[]>([])
+  const [filter, setFilter] = useState('')
+
+  useEffect(() => {
+    void allFoods().then(setFoods)
+  }, [])
+
+  const zichtbaar = foods
+    .filter((f) => f.key.includes(foodKey(filter)))
+    .sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name))
+
+  const bewerk = (key: string, p: Partial<FoodItem>) => {
+    const next = foods.map((f) => (f.key === key ? { ...f, ...p } : f))
+    setFoods(next)
+    const gewijzigd = next.find((f) => f.key === key)
+    if (gewijzigd) void putFoods([gewijzigd])
+  }
+
+  const wis = (key: string) => {
+    setFoods((prev) => prev.filter((f) => f.key !== key))
+    void deleteFood(key)
+  }
+
+  return (
+    <Card title={`Mijn items (${foods.length})`}>
+      <p className="note" style={{ marginBottom: 12 }}>
+        Alles wat je met een naam en calorieën opslaat komt hier vanzelf in. Namen en waarden kun je
+        aanpassen; typefouten gooi je eruit met het kruisje.
+      </p>
+
+      <div className="field">
+        <label>Zoeken</label>
+        <input
+          type="text"
+          value={filter}
+          placeholder="Bijvoorbeeld: bolletje"
+          onChange={(e) => setFilter(e.target.value)}
+        />
+      </div>
+
+      <div className="food-list">
+        {zichtbaar.length === 0 && <p className="empty">Geen items gevonden.</p>}
+        {zichtbaar.map((f) => (
+          <div className="food-row" key={f.key}>
+            <input
+              className="food-name"
+              value={f.name}
+              onChange={(e) => bewerk(f.key, { name: e.target.value })}
+            />
+            <input
+              className="food-kcal"
+              type="text"
+              inputMode="numeric"
+              value={f.kcal}
+              onChange={(e) => bewerk(f.key, { kcal: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+            />
+            <button className="remove" aria-label={`${f.name} verwijderen`} onClick={() => wis(f.key)}>
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }

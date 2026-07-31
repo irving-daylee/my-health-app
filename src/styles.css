@@ -1239,3 +1239,47 @@ textarea {
   color: var(--grey-600);
   margin-top: 1px;
 }
+
+/* ---------- beheer itemlijst ---------- */
+
+.food-list {
+  margin-top: 12px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.food-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--grey-200);
+}
+
+.food-row:last-child {
+  border-bottom: 0;
+}
+
+.food-name {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: none;
+}
+
+.food-name:focus {
+  border-color: var(--grey-200);
+  background: var(--white);
+}
+
+.food-kcal {
+  width: 66px;
+  flex: none;
+  text-align: right;
+  border: 1px solid var(--grey-200);
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-weight: 600;
+}

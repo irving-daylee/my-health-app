@@ -129,7 +129,7 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
         )}
       </Card>
 
-      <WorkoutCard day={day} onSave={onSave} />
+      <WorkoutCard day={day} days={days} profile={profile} onSave={onSave} />
 
       <Card title="Lichaamssamenstelling">
         <div className="fields">
@@ -362,19 +362,23 @@ function FoodCard({
     void allFoods().then(setFoods)
   }, [])
 
-  // Pas opnemen in de lijst als je even niets meer typt — anders belandt elke
-  // tussenstand van een naam er als apart item in.
+  // Opnemen in de lijst gebeurt pas als je het veld verlaat. Een timer op het
+  // typen leverde halve woorden op: pauzeer je even midden in een naam, dan
+  // stond die tussenstand er als los item in.
+  const leer = () => {
+    setFoods((known) => {
+      const next = learnFromDay(day, known)
+      if (next !== known) void putFoods(next).then(onFoodsChanged)
+      return next
+    })
+  }
+
+  // Tweede net onder het verlaten van het veld: blur vuurt niet in elke
+  // situatie, en dan zou een item nooit worden opgenomen.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setFoods((known) => {
-        const next = learnFromDay(day, known)
-        if (next !== known) {
-          void putFoods(next).then(onFoodsChanged)
-        }
-        return next
-      })
-    }, 1500)
+    const timer = setTimeout(leer, 3000)
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day])
 
   const doel = profile.calorieGoalKcal
@@ -404,6 +408,7 @@ function FoodCard({
             onClose={() => setOpenFor(null)}
             onChange={(name) => update(m.id, { name })}
             onPick={(item) => update(m.id, { name: item.name, kcal: item.kcal })}
+            onSettled={leer}
           />
           <div className="meal-calc">
             <label>
@@ -498,6 +503,7 @@ function NameField({
   onClose,
   onChange,
   onPick,
+  onSettled,
 }: {
   value: string
   foods: FoodItem[]
@@ -506,6 +512,7 @@ function NameField({
   onClose: () => void
   onChange: (name: string) => void
   onPick: (item: FoodItem) => void
+  onSettled: () => void
 }) {
   const wrap = useRef<HTMLDivElement>(null)
 
@@ -542,6 +549,7 @@ function NameField({
           onOpen()
         }}
         onFocus={onOpen}
+        onBlur={onSettled}
       />
       {toon && (
         <ul className="suggestions">
@@ -569,7 +577,26 @@ function NameField({
 
 const WORKOUT_TYPES = Object.keys(WORKOUT_LABELS) as WorkoutType[]
 
-function WorkoutCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => void }) {
+function WorkoutCard({
+  day,
+  days,
+  profile,
+  onSave,
+}: {
+  day: DayEntry
+  days: DayEntry[]
+  profile: Profile
+  onSave: (d: DayEntry) => void
+}) {
+  // deze week = de laatste zeven dagen tot en met vandaag
+  const week = days.filter((d) => d.date <= day.date).slice(-7)
+  const weekMinuten = week.reduce(
+    (sum, d) => sum + Math.max(workoutMinutes(d), d.exerciseMin ?? 0),
+    0,
+  )
+  const weekKracht = week.filter((d) =>
+    d.workouts.some((w) => w.type === 'krachttraining'),
+  ).length
   const setWorkouts = (workouts: Workout[]) => onSave({ ...day, workouts })
   const update = (id: string, p: Partial<Workout>) =>
     setWorkouts(day.workouts.map((w) => (w.id === id ? { ...w, ...p } : w)))
@@ -667,6 +694,23 @@ function WorkoutCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => 
           )}
         </>
       )}
+
+      <div className="grid" style={{ marginTop: day.workouts.length ? 14 : 0 }}>
+        <div className="stat">
+          <div className="k">Deze week bewogen</div>
+          <div className="v">
+            {weekMinuten}
+            <small>van {profile.exerciseGoalWeek} min</small>
+          </div>
+        </div>
+        <div className="stat">
+          <div className="k">Krachttraining</div>
+          <div className="v">
+            {weekKracht}
+            <small>van {profile.strengthGoalWeek} keer</small>
+          </div>
+        </div>
+      </div>
 
       <button
         className="btn block secondary"
