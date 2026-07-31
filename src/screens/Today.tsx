@@ -3,6 +3,7 @@ import type { Body, DayEntry, Meal, Profile, Workout, WorkoutType } from '../typ
 import { WORKOUT_LABELS } from '../types'
 import { allFoods, putFoods } from '../lib/db'
 import { learnFromDay, searchFoods, type FoodItem } from '../lib/foods'
+import { forecast } from '../lib/forecast'
 import { Card, NumberField, Scale, TimeField, Toggle } from '../components/inputs'
 import {
   balance,
@@ -284,7 +285,13 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
         </p>
       </Card>
 
-      <FoodCard day={day} profile={profile} onSave={onSave} onFoodsChanged={onFoodsChanged} />
+      <FoodCard
+        day={day}
+        days={days}
+        profile={profile}
+        onSave={onSave}
+        onFoodsChanged={onFoodsChanged}
+      />
 
       <Card title="Context">
         <div className="checkline">
@@ -335,11 +342,13 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
 
 function FoodCard({
   day,
+  days,
   profile,
   onSave,
   onFoodsChanged,
 }: {
   day: DayEntry
+  days: DayEntry[]
   profile: Profile
   onSave: (d: DayEntry) => void
   onFoodsChanged: () => void
@@ -459,6 +468,8 @@ function FoodCard({
           </p>
         </div>
       )}
+
+      {totaal > 0 && <Vooruitblik day={day} days={days} profile={profile} />}
 
       <button
         className="btn block secondary"
@@ -667,5 +678,101 @@ function WorkoutCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => 
         Training toevoegen
       </button>
     </Card>
+  )
+}
+
+
+/* ---------------- vooruitblik ---------------- */
+
+function Vooruitblik({
+  day,
+  days,
+  profile,
+}: {
+  day: DayEntry
+  days: DayEntry[]
+  profile: Profile
+}) {
+  const f = forecast(day, days, profile)
+  const kg = (kcal: number) => nl((kcal * 7) / 7700, 2)
+
+  return (
+    <div className="forecast">
+      <h4>Waar kom je vandaag uit?</h4>
+
+      <ul className="forecast-lines">
+        {f.expectedBurn != null && (
+          <li>
+            <span>Verbranding vandaag</span>
+            <strong>
+              {f.expectedBurn} kcal
+              <em>{f.burnIsMeasured ? 'ingevuld' : 'jouw gemiddelde'}</em>
+            </strong>
+          </li>
+        )}
+
+        {f.balanceIfStopNow != null && (
+          <li>
+            <span>Als je nu stopt met eten</span>
+            <strong className={f.balanceIfStopNow < 0 ? 'good' : 'warn'}>
+              {signed(f.balanceIfStopNow, 0)} kcal
+              <em>{kg(f.balanceIfStopNow)} kg per week</em>
+            </strong>
+          </li>
+        )}
+
+        {f.balanceIfGoal != null && (
+          <li>
+            <span>Als je je doel volmaakt</span>
+            <strong className={f.balanceIfGoal < 0 ? 'good' : 'warn'}>
+              {signed(f.balanceIfGoal, 0)} kcal
+              <em>{f.kgPerWeekAtGoal != null ? nl(f.kgPerWeekAtGoal, 2) : '—'} kg per week</em>
+            </strong>
+          </li>
+        )}
+
+        {f.bmr != null && (
+          <li>
+            <span>Basaalverbruik</span>
+            <strong>
+              {f.bmr} kcal
+              <em>
+                {f.intake < f.bmr
+                  ? `je zit er ${f.bmr - f.intake} kcal onder`
+                  : `je zit er ${f.intake - f.bmr} kcal boven`}
+              </em>
+            </strong>
+          </li>
+        )}
+
+        {f.averageIntake != null && (
+          <li>
+            <span>Je gemiddelde dag</span>
+            <strong>
+              {f.averageIntake} kcal
+              <em>
+                {f.intake > f.averageIntake
+                  ? `${f.intake - f.averageIntake} meer dan gebruikelijk`
+                  : `${f.averageIntake - f.intake} minder tot nu toe`}
+              </em>
+            </strong>
+          </li>
+        )}
+      </ul>
+
+      {f.expectedBurn == null && (
+        <p className="note">
+          Zodra je een paar dagen je verbranding hebt ingevuld, reken ik hier vooruit met jouw eigen
+          gemiddelde in plaats van met niets.
+        </p>
+      )}
+
+      {f.belowBmr && (
+        <p className="note warn">
+          Je caloriedoel ligt onder je basaalverbruik. Dat levert geen sneller resultaat op, wel meer
+          kans op spierverlies en slechte energie.
+        </p>
+      )}
+    </div>
   )
 }

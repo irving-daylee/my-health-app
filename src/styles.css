@@ -1174,3 +1174,68 @@ textarea {
   padding: 8px 10px;
   text-align: center;
 }
+
+/* ---------- vooruitblik ---------- */
+
+.forecast {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--grey-200);
+}
+
+.forecast h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--grey-600);
+}
+
+.forecast-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.forecast-lines li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--grey-200);
+  font-size: 13px;
+}
+
+.forecast-lines li:last-child {
+  border-bottom: 0;
+}
+
+.forecast-lines span {
+  color: var(--grey-600);
+}
+
+.forecast-lines strong {
+  flex: none;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.forecast-lines strong.good {
+  color: var(--good);
+}
+
+.forecast-lines strong.warn {
+  color: var(--warn);
+}
+
+.forecast-lines em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--grey-600);
+  margin-top: 1px;
+}
