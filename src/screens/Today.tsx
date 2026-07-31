@@ -1,4 +1,7 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Body, DayEntry, Meal, Profile } from '../types'
+import { allFoods, putFoods } from '../lib/db'
+import { learnFromDay, searchFoods, type FoodItem } from '../lib/foods'
 import { Card, NumberField, Scale, TimeField, Toggle } from '../components/inputs'
 import {
   balance,
@@ -20,9 +23,10 @@ type Props = {
   days: DayEntry[]
   profile: Profile
   onSave: (d: DayEntry) => void
+  onFoodsChanged: () => void
 }
 
-export default function Today({ day, days, profile, onSave }: Props) {
+export default function Today({ day, days, profile, onSave, onFoodsChanged }: Props) {
   const patch = (p: Partial<DayEntry>) => onSave({ ...day, ...p })
   const patchBody = (p: Partial<Body>) => onSave({ ...day, body: { ...day.body, ...p } })
 
@@ -275,7 +279,7 @@ export default function Today({ day, days, profile, onSave }: Props) {
         </p>
       </Card>
 
-      <FoodCard day={day} profile={profile} onSave={onSave} />
+      <FoodCard day={day} profile={profile} onSave={onSave} onFoodsChanged={onFoodsChanged} />
 
       <Card title="Context">
         <div className="checkline">
@@ -328,11 +332,34 @@ function FoodCard({
   day,
   profile,
   onSave,
+  onFoodsChanged,
 }: {
   day: DayEntry
   profile: Profile
   onSave: (d: DayEntry) => void
+  onFoodsChanged: () => void
 }) {
+  const [foods, setFoods] = useState<FoodItem[]>([])
+
+  useEffect(() => {
+    void allFoods().then(setFoods)
+  }, [])
+
+  // Pas opnemen in de lijst als je even niets meer typt — anders belandt elke
+  // tussenstand van een naam er als apart item in.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFoods((known) => {
+        const next = learnFromDay(day, known)
+        if (next !== known) {
+          void putFoods(next).then(onFoodsChanged)
+        }
+        return next
+      })
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [day])
+
   const doel = profile.calorieGoalKcal
   const totaal = intakeKcal(day)
   const pct = doel > 0 ? Math.round((totaal / doel) * 100) : 0
@@ -352,11 +379,11 @@ function FoodCard({
 
       {day.meals.map((m) => (
         <div className="meal-row" key={m.id}>
-          <input
-            className="meal-name"
+          <NameField
             value={m.name}
-            placeholder="Wat at of dronk je?"
-            onChange={(e) => update(m.id, { name: e.target.value })}
+            foods={foods}
+            onChange={(name) => update(m.id, { name })}
+            onPick={(item) => update(m.id, { name: item.name, kcal: item.kcal })}
           />
           <div className="meal-calc">
             <label>
@@ -435,5 +462,70 @@ function FoodCard({
         houdt de trend nog steeds kloppend, alleen het absolute getal niet.
       </p>
     </Card>
+  )
+}
+
+
+/* ---------------- naamveld met suggesties ---------------- */
+
+function NameField({
+  value,
+  foods,
+  onChange,
+  onPick,
+}: {
+  value: string
+  foods: FoodItem[]
+  onChange: (name: string) => void
+  onPick: (item: FoodItem) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const wrap = useRef<HTMLDivElement>(null)
+
+  const treffers = value.trim() ? searchFoods(foods, value) : []
+  const toon = open && treffers.length > 0 && !treffers.some((f) => f.name === value)
+
+  // Tikken buiten het veld sluit de lijst; anders blijft hij op mobiel hangen.
+  useEffect(() => {
+    if (!toon) return
+    const buiten = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', buiten)
+    return () => document.removeEventListener('pointerdown', buiten)
+  }, [toon])
+
+  return (
+    <div className="name-field" ref={wrap}>
+      <input
+        className="meal-name"
+        value={value}
+        placeholder="Wat at of dronk je?"
+        autoComplete="off"
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+      />
+      {toon && (
+        <ul className="suggestions">
+          {treffers.map((f) => (
+            <li key={f.key}>
+              <button
+                type="button"
+                onClick={() => {
+                  onPick(f)
+                  setOpen(false)
+                }}
+              >
+                <span>{f.name}</span>
+                <strong>{f.kcal} kcal</strong>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

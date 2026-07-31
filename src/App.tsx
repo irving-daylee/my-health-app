@@ -42,7 +42,14 @@ export default function App() {
     setProfile(nextProfile)
   }, [])
 
-  const { user, authReady, state: syncState, syncDay, syncProfile } = useCloudSync(applyRemote)
+  const {
+    user,
+    authReady,
+    state: syncState,
+    syncDay,
+    syncProfile,
+    syncFoods,
+  } = useCloudSync(applyRemote)
 
   useEffect(() => {
     // Zonder deze catch blijft de app op een wit scherm hangen zodra IndexedDB
@@ -186,7 +193,15 @@ export default function App() {
       )}
 
       <main className="content">
-        {tab === 'today' && <Today day={day} days={days} profile={profile} onSave={saveDay} />}
+        {tab === 'today' && (
+          <Today
+            day={day}
+            days={days}
+            profile={profile}
+            onSave={saveDay}
+            onFoodsChanged={syncFoods}
+          />
+        )}
         {tab === 'trends' && <Trends days={days} profile={profile} />}
         {tab === 'insights' && (
           <Insights days={days} profile={profile} onProfile={saveProfile} />

@@ -15,6 +15,7 @@ import {
 import { getDatabase, off, onValue, ref, set, type Database } from 'firebase/database'
 import { firebaseConfig, syncEnabled } from '../firebase.config'
 import type { DayEntry, ISODate, Profile } from '../types'
+import type { FoodItem } from './foods'
 
 export { syncEnabled }
 
@@ -34,7 +35,11 @@ function init() {
   return { auth: auth!, db: db! }
 }
 
-export type RemoteData = { profile?: Profile; days?: Record<ISODate, DayEntry> }
+export type RemoteData = {
+  profile?: Profile
+  days?: Record<ISODate, DayEntry>
+  foods?: Record<string, FoodItem>
+}
 
 export function watchAuth(cb: (user: User | null) => void): () => void {
   if (!syncEnabled) {
@@ -66,6 +71,15 @@ export const pushDay = (uid: string, day: DayEntry) =>
 
 export const pushProfile = (uid: string, profile: Profile) =>
   set(ref(init().db, `users/${uid}/profile`), profile)
+
+/** Firebase-sleutels mogen geen . # $ [ ] / bevatten; namen dus coderen. */
+const foodPath = (key: string) => encodeURIComponent(key).replace(/\./g, '%2E')
+
+export const pushFoods = (uid: string, items: FoodItem[]) =>
+  set(
+    ref(init().db, `users/${uid}/foods`),
+    Object.fromEntries(items.map((f) => [foodPath(f.key), f])),
+  )
 
 /** Eenmalige volledige upload — gebruikt bij de eerste sync van een apparaat. */
 export async function pushAll(uid: string, profile: Profile, days: DayEntry[]) {

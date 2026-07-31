@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
 import type { DayEntry, Profile } from '../types'
-import { allDays, getProfile, putDayRaw, putProfile } from './db'
-import { pushAll, pushDay, pushProfile, syncEnabled, watchAuth, watchData } from './firebase'
-import { mergeDays, mergeProfile, remoteDays, unsyncedDays, type SyncState } from './sync'
+import { allDays, allFoods, getProfile, putDayRaw, putFoods, putProfile } from './db'
+import { pushAll, pushDay, pushFoods, pushProfile, syncEnabled, watchAuth, watchData } from './firebase'
+import { mergeDays, mergeProfile, remoteDays, remoteFoods, unsyncedDays, type SyncState } from './sync'
+import { mergeFoods } from './foods'
 
 /**
  * Houdt de lokale opslag en Firebase gelijk. Lokaal blijft leidend voor de UI:
@@ -36,10 +37,17 @@ export function useCloudSync(onRemoteChange: (days: DayEntry[], profile: Profile
         if (applying.current) return
         applying.current = true
         try {
-          const [localDays, localProfile] = await Promise.all([allDays(), getProfile()])
+          const [localDays, localProfile, localFoods] = await Promise.all([
+            allDays(),
+            getProfile(),
+            allFoods(),
+          ])
           const incoming = remoteDays(data)
           const merged = mergeDays(localDays, incoming)
           const profile = mergeProfile(localProfile, data?.profile)
+
+          const foods = mergeFoods(localFoods, remoteFoods(data))
+          await putFoods(foods)
 
           for (const day of merged) await putDayRaw(day)
           if (profile !== localProfile) await putProfile(profile)
@@ -56,6 +64,7 @@ export function useCloudSync(onRemoteChange: (days: DayEntry[], profile: Profile
               await Promise.all(behind.map((d) => pushDay(user.uid, d)))
               if (profile !== data.profile) await pushProfile(user.uid, profile)
             }
+            await pushFoods(user.uid, foods)
           }
           setState(navigator.onLine ? 'synced' : 'offline')
         } catch {
@@ -91,6 +100,16 @@ export function useCloudSync(onRemoteChange: (days: DayEntry[], profile: Profile
     }
   }
 
+  /** De lijst is klein; in zijn geheel wegschrijven is simpeler dan per item. */
+  const syncFoods = async () => {
+    if (!user) return
+    try {
+      await pushFoods(user.uid, await allFoods())
+    } catch {
+      /* lokaal staat het al; de volgende sync haalt het in */
+    }
+  }
+
   const syncProfile = async (profile: Profile) => {
     if (!user) return
     try {
@@ -100,5 +119,5 @@ export function useCloudSync(onRemoteChange: (days: DayEntry[], profile: Profile
     }
   }
 
-  return { user, authReady, state, syncDay, syncProfile }
+  return { user, authReady, state, syncDay, syncProfile, syncFoods }
 }

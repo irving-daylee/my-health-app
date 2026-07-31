@@ -46,3 +46,6 @@ export const syncLabel: Record<SyncState, string> = {
   synced: 'Alles gesynchroniseerd',
   error: 'Synchroniseren mislukt — je data staat nog wel lokaal',
 }
+
+export const remoteFoods = (data: RemoteData | null) =>
+  data?.foods ? Object.values(data.foods).filter((f) => f?.key) : []

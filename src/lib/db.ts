@@ -1,10 +1,12 @@
 import type { DayEntry, ISODate, Profile, Settings } from '../types'
+import { seedFoods, type FoodItem } from './foods'
 import { defaultProfile, defaultSettings, normalizeDay } from '../types'
 
 const DB_NAME = 'gezondheid'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const DAYS = 'days'
 const META = 'meta'
+const FOODS = 'foods'
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
@@ -22,6 +24,12 @@ function open(): Promise<IDBDatabase> {
       const db = req.result
       if (!db.objectStoreNames.contains(DAYS)) db.createObjectStore(DAYS, { keyPath: 'date' })
       if (!db.objectStoreNames.contains(META)) db.createObjectStore(META)
+      if (!db.objectStoreNames.contains(FOODS)) {
+        const store = db.createObjectStore(FOODS, { keyPath: 'key' })
+        // Meteen vullen met de startlijst, zodat de eerste keer invoeren al
+        // suggesties geeft in plaats van een lege doos.
+        for (const item of seedFoods()) store.add(item)
+      }
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -93,3 +101,18 @@ export async function importAll(payload: unknown) {
   }
   return data.days.length
 }
+
+export const allFoods = () => tx<FoodItem[]>(FOODS, 'readonly', (s) => s.getAll())
+
+export async function putFoods(items: FoodItem[]) {
+  const db = await open()
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(FOODS, 'readwrite')
+    const store = t.objectStore(FOODS)
+    for (const item of items) store.put(item)
+    t.oncomplete = () => resolve()
+    t.onerror = () => reject(t.error)
+  })
+}
+
+export const deleteFood = (key: string) => tx(FOODS, 'readwrite', (s) => s.delete(key))
