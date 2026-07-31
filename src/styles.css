@@ -331,6 +331,12 @@ textarea {
   resize: vertical;
 }
 
+/* Native datum- en tijdpickers hebben een eigen minimumbreedte die per browser
+   verschilt en zich niets aantrekt van de kolom. Die krijgen een eigen regel. */
+.field.wide {
+  grid-column: 1 / -1;
+}
+
 .fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
@@ -954,4 +960,47 @@ textarea {
   margin: 0 0 14px;
   max-height: 180px;
   overflow: auto;
+}
+
+/* ---------- caloriedoel ---------- */
+
+.goal {
+  margin-top: 14px;
+}
+
+.goal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--grey-600);
+  margin-bottom: 6px;
+}
+
+.goal-head strong {
+  font-size: 17px;
+  color: var(--navy);
+}
+
+.goal-head .over {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.goal-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--grey-200);
+  overflow: hidden;
+}
+
+.goal-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--navy);
+  transition: width 0.25s ease;
+}
+
+.goal-fill.over {
+  background: var(--warn);
 }

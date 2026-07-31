@@ -59,6 +59,8 @@ export type Profile = {
   heightM: number
   targetWeightKg: number
   waterGoalMl: number
+  /** dagelijks caloriedoel voor de voortgangsbalk bij eten en drinken */
+  calorieGoalKcal: number
   /** nodig voor de BMR-schatting; blijft leeg tot je 'm zelf invult */
   sex?: Sex
 }
@@ -68,6 +70,22 @@ export type Settings = {
   pinHash?: string
   biometricCredentialId?: string
 }
+
+/**
+ * Firebase slaat geen lege objecten of arrays op: een dag waarop alleen water
+ * is ingevuld komt terug zonder `body`, `sleep`, `meals` en `context`. Alles wat
+ * van buiten komt moet daarom hierlangs, anders klapt de eerste `day.body.x`
+ * eruit.
+ */
+export const normalizeDay = (raw: Partial<DayEntry> & { date: ISODate }): DayEntry => ({
+  ...raw,
+  date: raw.date,
+  sleep: raw.sleep ?? {},
+  body: raw.body ?? {},
+  meals: Array.isArray(raw.meals) ? raw.meals : raw.meals ? Object.values(raw.meals) : [],
+  context: raw.context ?? {},
+  updatedAt: raw.updatedAt ?? 0,
+})
 
 export const emptyDay = (date: ISODate): DayEntry => ({
   date,
@@ -83,6 +101,7 @@ export const defaultProfile: Profile = {
   heightM: 1.74,
   targetWeightKg: 74.0,
   waterGoalMl: 2500,
+  calorieGoalKcal: 2000,
 }
 
 export const defaultSettings: Settings = {}

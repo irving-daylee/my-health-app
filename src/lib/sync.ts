@@ -1,5 +1,5 @@
 import type { DayEntry, ISODate, Profile } from '../types'
-import { defaultProfile } from '../types'
+import { defaultProfile, normalizeDay } from '../types'
 import type { RemoteData } from './firebase'
 
 /**
@@ -26,7 +26,7 @@ export function mergeProfile(local: Profile, remote: Profile | undefined): Profi
 }
 
 export const remoteDays = (data: RemoteData | null): DayEntry[] =>
-  data?.days ? Object.values(data.days) : []
+  data?.days ? Object.values(data.days).filter((d) => d?.date).map(normalizeDay) : []
 
 /** Dagen die lokaal nieuwer zijn dan wat er op de server staat. */
 export function unsyncedDays(local: DayEntry[], remote: DayEntry[]): DayEntry[] {

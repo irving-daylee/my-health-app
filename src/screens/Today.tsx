@@ -246,12 +246,14 @@ export default function Today({ day, days, profile, onSave }: Props) {
           <TextField
             label="Naar bed"
             type="time"
+            wide
             value={day.sleep.bedtime}
             onChange={(v) => patch({ sleep: { ...day.sleep, bedtime: v } })}
           />
           <TextField
             label="Opgestaan"
             type="time"
+            wide
             value={day.sleep.wake}
             onChange={(v) => patch({ sleep: { ...day.sleep, wake: v } })}
           />
@@ -277,7 +279,7 @@ export default function Today({ day, days, profile, onSave }: Props) {
         </p>
       </Card>
 
-      <FoodCard day={day} onSave={onSave} />
+      <FoodCard day={day} profile={profile} onSave={onSave} />
 
       <Card title="Context">
         <div className="checkline">
@@ -326,7 +328,18 @@ export default function Today({ day, days, profile, onSave }: Props) {
 
 /* ---------------- eten en drinken ---------------- */
 
-function FoodCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => void }) {
+function FoodCard({
+  day,
+  profile,
+  onSave,
+}: {
+  day: DayEntry
+  profile: Profile
+  onSave: (d: DayEntry) => void
+}) {
+  const doel = profile.calorieGoalKcal
+  const totaal = intakeKcal(day)
+  const pct = doel > 0 ? Math.round((totaal / doel) * 100) : 0
   const setMeals = (meals: Meal[]) => onSave({ ...day, meals })
 
   const update = (id: string, p: Partial<Meal>) =>
@@ -388,6 +401,28 @@ function FoodCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => voi
         <div className="meal-total">
           <span>Totaal</span>
           <strong>{intakeKcal(day).toLocaleString('nl-NL')} kcal</strong>
+        </div>
+      )}
+
+      {day.meals.length > 0 && (
+        <div className="goal">
+          <div className="goal-head">
+            <span>
+              <strong>{totaal}</strong> van {doel} kcal
+            </span>
+            <span className={pct > 100 ? 'over' : ''}>{pct}%</span>
+          </div>
+          <div className="goal-bar">
+            <div
+              className={`goal-fill${pct > 100 ? ' over' : ''}`}
+              style={{ width: `${Math.min(pct, 100)}%` }}
+            />
+          </div>
+          <p className="note" style={{ marginTop: 6 }}>
+            {pct > 100
+              ? `${totaal - doel} kcal boven je doel.`
+              : `Nog ${doel - totaal} kcal tot je doel.`}
+          </p>
         </div>
       )}
 

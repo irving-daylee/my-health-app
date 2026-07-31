@@ -135,6 +135,7 @@ export default function SettingsScreen({
           <TextField
             label="Geboortedatum"
             type="date"
+            wide
             value={profile.birthDate}
             onChange={(v) => v && onProfile({ ...profile, birthDate: v })}
           />
@@ -151,6 +152,13 @@ export default function SettingsScreen({
             step={0.1}
             value={profile.targetWeightKg}
             onChange={(v) => v && onProfile({ ...profile, targetWeightKg: v })}
+          />
+          <NumberField
+            label="Caloriedoel"
+            unit="kcal"
+            step={50}
+            value={profile.calorieGoalKcal}
+            onChange={(v) => v && onProfile({ ...profile, calorieGoalKcal: v })}
           />
           <NumberField
             label="Waterdoel"

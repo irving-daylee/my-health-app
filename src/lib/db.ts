@@ -1,5 +1,5 @@
 import type { DayEntry, ISODate, Profile, Settings } from '../types'
-import { defaultProfile, defaultSettings } from '../types'
+import { defaultProfile, defaultSettings, normalizeDay } from '../types'
 
 const DB_NAME = 'gezondheid'
 const DB_VERSION = 1
@@ -58,7 +58,10 @@ export const deleteDay = (date: ISODate) => tx(DAYS, 'readwrite', (s) => s.delet
 
 export async function allDays(): Promise<DayEntry[]> {
   const days = await tx<DayEntry[]>(DAYS, 'readonly', (s) => s.getAll())
-  return days.sort((a, b) => a.date.localeCompare(b.date))
+  return days
+    .filter((d) => d?.date)
+    .map(normalizeDay)
+    .sort((a, b) => a.date.localeCompare(b.date))
 }
 
 export async function getProfile(): Promise<Profile> {
@@ -86,7 +89,7 @@ export async function importAll(payload: unknown) {
   if (!data || !Array.isArray(data.days)) throw new Error('Onbekend bestandsformaat')
   if (data.profile) await putProfile({ ...defaultProfile, ...data.profile })
   for (const day of data.days) {
-    if (typeof day?.date === 'string') await putDayRaw(day)
+    if (typeof day?.date === 'string') await putDayRaw(normalizeDay(day))
   }
   return data.days.length
 }

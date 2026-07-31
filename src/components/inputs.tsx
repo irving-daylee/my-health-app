@@ -69,9 +69,11 @@ export function TextField(props: {
   onChange: (v: string | undefined) => void
   type?: string
   placeholder?: string
+  /** eigen volle regel — voor datum- en tijdvelden, die per browser anders breed zijn */
+  wide?: boolean
 }) {
   return (
-    <div className="field">
+    <div className={`field${props.wide ? ' wide' : ''}`}>
       <label>{props.label}</label>
       <input
         type={props.type ?? 'text'}
