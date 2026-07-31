@@ -64,6 +64,18 @@ export const intakeKcal = (day: DayEntry) =>
 export const burned = (day: DayEntry) => (day.restingKcal ?? 0) + (day.activeKcal ?? 0)
 
 /**
+ * Calorieën uit je zelf gelogde trainingen. Bewust NIET opgeteld bij `burned`:
+ * je horloge rekent die inspanning al mee in je actieve calorieën, en twee keer
+ * tellen maakt je balans onbruikbaar. Dit getal is er om mee te vergelijken —
+ * of om over te nemen als je horloge niets heeft geleverd.
+ */
+export const workoutKcal = (day: DayEntry) =>
+  day.workouts.reduce((sum, w) => sum + (w.kcal ?? 0), 0)
+
+export const workoutMinutes = (day: DayEntry) =>
+  day.workouts.reduce((sum, w) => sum + (w.minutes ?? 0), 0)
+
+/**
  * Caloriebalans: verbrand − ingenomen. Negatief = tekort (afvallen).
  * Null zolang niet zowel verbranding als voeding bekend is — anders lieg je met een getal.
  */

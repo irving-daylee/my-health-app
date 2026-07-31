@@ -1,5 +1,5 @@
 import type { DayEntry, Profile } from '../types'
-import { burned, intakeKcal, sleepHours, weighIns, weightTrend } from './derive'
+import { burned, intakeKcal, sleepHours, weighIns, weightTrend, workoutMinutes } from './derive'
 
 export type Insight = {
   tag: 'positive' | 'warning' | 'neutral'
@@ -322,6 +322,59 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
         weekly >= 150
           ? 'Boven de 150 minuten die als richtlijn wordt aangehouden.'
           : 'De gangbare richtlijn is 150 minuten per week. Je zit daar nu onder.',
+    })
+  }
+
+  // krachttraining is de knop die bepaalt of je spiermassa behoudt tijdens een tekort
+  const metTraining = days.filter((d) => d.workouts.length > 0)
+  if (metTraining.length >= 5) {
+    const weken = Math.max(days.length / 7, 1)
+    const kracht = days.filter((d) => d.workouts.some((w) => w.type === 'krachttraining')).length
+    const perWeek = Math.round((kracht / weken) * 10) / 10
+    out.push({
+      tag: perWeek >= 2 ? 'positive' : 'warning',
+      tagText: 'Krachttraining',
+      title: `${nf(perWeek, 1)} keer per week`,
+      body:
+        perWeek >= 2
+          ? 'Twee of meer krachtsessies per week is wat je spiermassa beschermt terwijl je afvalt. Dit is waarschijnlijk waarom je vetvrije massa het goed houdt.'
+          : 'Bij afvallen is dit de belangrijkste rem op spierverlies. Twee keer per week is de gangbare ondergrens; met minder verlies je eerder ook vetvrije massa.',
+    })
+  }
+
+  // vocht na een zware sessie verklaart een sprong op de weegschaal
+  const naKracht: number[] = []
+  const naRust: number[] = []
+  for (let i = 1; i < days.length; i++) {
+    const w = days[i].body.weightKg
+    const vorige = days[i - 1].body.weightKg
+    if (w == null || vorige == null || days[i].body.fasted === false) continue
+    const zwaar = days[i - 1].workouts.some((x) => x.type === 'krachttraining')
+    ;(zwaar ? naKracht : naRust).push(w - vorige)
+  }
+  if (naKracht.length >= 3 && naRust.length >= 3) {
+    const verschil = mean(naKracht) - mean(naRust)
+    if (verschil >= 0.2) {
+      out.push({
+        tag: 'neutral',
+        tagText: 'Vocht',
+        title: `Ochtend na krachttraining: +${nf(verschil, 2)} kg extra`,
+        body: `Gemeten over ${s(naKracht.length, 'dag', 'dagen')}. Dat is vocht dat je spieren vasthouden om te herstellen, geen vet. Schrik dus niet van de weegschaal de dag na een zware sessie — kijk naar je trend.`,
+      })
+    }
+  }
+
+  const totaalMinuten = days.map(workoutMinutes).filter((m) => m > 0)
+  if (totaalMinuten.length >= 4) {
+    const perWeek = Math.round((totaalMinuten.reduce((a, b) => a + b, 0) / Math.max(days.length / 7, 1)))
+    out.push({
+      tag: perWeek >= 150 ? 'positive' : 'neutral',
+      tagText: 'Trainingsduur',
+      title: `${perWeek} minuten per week gelogd`,
+      body:
+        perWeek >= 150
+          ? 'Boven de richtlijn van 150 minuten matige inspanning per week.'
+          : 'De gangbare richtlijn is 150 minuten per week. Dit telt alleen wat je zelf logt — losse beweging zit in je beweegminuten.',
     })
   }
 

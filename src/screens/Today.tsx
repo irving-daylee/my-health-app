@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Body, DayEntry, Meal, Profile } from '../types'
+import type { Body, DayEntry, Meal, Profile, Workout, WorkoutType } from '../types'
+import { WORKOUT_LABELS } from '../types'
 import { allFoods, putFoods } from '../lib/db'
 import { learnFromDay, searchFoods, type FoodItem } from '../lib/foods'
 import { Card, NumberField, Scale, TimeField, Toggle } from '../components/inputs'
@@ -16,6 +17,8 @@ import {
   signed,
   sleepHours,
   trendDelta,
+  workoutKcal,
+  workoutMinutes,
 } from '../lib/derive'
 
 type Props = {
@@ -124,6 +127,8 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
           </p>
         )}
       </Card>
+
+      <WorkoutCard day={day} onSave={onSave} />
 
       <Card title="Lichaamssamenstelling">
         <div className="fields">
@@ -527,5 +532,122 @@ function NameField({
         </ul>
       )}
     </div>
+  )
+}
+
+
+/* ---------------- training ---------------- */
+
+const WORKOUT_TYPES = Object.keys(WORKOUT_LABELS) as WorkoutType[]
+
+function WorkoutCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => void }) {
+  const setWorkouts = (workouts: Workout[]) => onSave({ ...day, workouts })
+  const update = (id: string, p: Partial<Workout>) =>
+    setWorkouts(day.workouts.map((w) => (w.id === id ? { ...w, ...p } : w)))
+
+  const kcal = workoutKcal(day)
+  const minuten = workoutMinutes(day)
+  const getal = (v: string) => (v === '' ? undefined : Number(v.replace(/\D/g, '')))
+
+  return (
+    <Card title="Training">
+      {day.workouts.length === 0 && <p className="empty">Nog geen training gelogd.</p>}
+
+      {day.workouts.map((w) => (
+        <div className="workout-row" key={w.id}>
+          <div className="workout-top">
+            <select
+              value={w.type}
+              onChange={(e) => update(w.id, { type: e.target.value as WorkoutType })}
+            >
+              {WORKOUT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {WORKOUT_LABELS[type]}
+                </option>
+              ))}
+            </select>
+            <button
+              className="remove"
+              aria-label="Training verwijderen"
+              onClick={() => setWorkouts(day.workouts.filter((x) => x.id !== w.id))}
+            >
+              ×
+            </button>
+          </div>
+          <div className="workout-fields">
+            <label>
+              <span>minuten</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="60"
+                value={w.minutes ?? ''}
+                onChange={(e) => update(w.id, { minutes: getal(e.target.value) })}
+              />
+            </label>
+            <label>
+              <span>kcal</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="500"
+                value={w.kcal ?? ''}
+                onChange={(e) => update(w.id, { kcal: getal(e.target.value) })}
+              />
+            </label>
+          </div>
+        </div>
+      ))}
+
+      {day.workouts.length > 0 && (
+        <>
+          <div className="grid" style={{ marginTop: 12 }}>
+            <div className="stat">
+              <div className="k">Totaal</div>
+              <div className="v">
+                {minuten}
+                <small>min</small>
+              </div>
+            </div>
+            <div className="stat">
+              <div className="k">Geschat verbrand</div>
+              <div className="v">
+                {kcal}
+                <small>kcal</small>
+              </div>
+            </div>
+          </div>
+
+          <p className="note" style={{ marginTop: 10 }}>
+            Deze calorieën tellen <strong>niet</strong> mee in je balans — je horloge rekent deze
+            inspanning al mee in je actieve calorieën, en twee keer tellen maakt je balans
+            onbruikbaar.
+            {day.activeKcal == null && kcal > 0 && ' Heb je geen horlogedata? Neem ze dan over:'}
+          </p>
+
+          {day.activeKcal == null && kcal > 0 && (
+            <button
+              className="btn secondary"
+              style={{ marginTop: 8 }}
+              onClick={() =>
+                onSave({ ...day, activeKcal: kcal, exerciseMin: day.exerciseMin ?? minuten })
+              }
+            >
+              Gebruik {kcal} kcal als actieve calorieën
+            </button>
+          )}
+        </>
+      )}
+
+      <button
+        className="btn block secondary"
+        style={{ marginTop: 14 }}
+        onClick={() =>
+          setWorkouts([...day.workouts, { id: crypto.randomUUID(), type: 'zaalvoetbal' }])
+        }
+      >
+        Training toevoegen
+      </button>
+    </Card>
   )
 }

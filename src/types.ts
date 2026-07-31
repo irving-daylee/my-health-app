@@ -29,6 +29,32 @@ export type Body = {
   fasted?: boolean
 }
 
+export type WorkoutType =
+  | 'zaalvoetbal'
+  | 'training'
+  | 'krachttraining'
+  | 'wandelen'
+  | 'fietsen'
+  | 'anders'
+
+export type Workout = {
+  id: string
+  type: WorkoutType
+  minutes?: number
+  /** eigen schatting; telt niet automatisch mee in de balans, zie derive.ts */
+  kcal?: number
+  note?: string
+}
+
+export const WORKOUT_LABELS: Record<WorkoutType, string> = {
+  zaalvoetbal: 'Zaalvoetbal',
+  training: 'Zaalvoetbaltraining',
+  krachttraining: 'Krachttraining',
+  wandelen: 'Wandelen',
+  fietsen: 'Fietsen',
+  anders: 'Anders',
+}
+
 export type Context = {
   alcohol?: boolean
   ill?: boolean
@@ -47,6 +73,7 @@ export type DayEntry = {
   sleep: Sleep
   body: Body
   meals: Meal[]
+  workouts: Workout[]
   context: Context
   updatedAt: number
 }
@@ -83,6 +110,11 @@ export const normalizeDay = (raw: Partial<DayEntry> & { date: ISODate }): DayEnt
   sleep: raw.sleep ?? {},
   body: raw.body ?? {},
   meals: Array.isArray(raw.meals) ? raw.meals : raw.meals ? Object.values(raw.meals) : [],
+  workouts: Array.isArray(raw.workouts)
+    ? raw.workouts
+    : raw.workouts
+      ? Object.values(raw.workouts)
+      : [],
   context: raw.context ?? {},
   updatedAt: raw.updatedAt ?? 0,
 })
@@ -92,6 +124,7 @@ export const emptyDay = (date: ISODate): DayEntry => ({
   sleep: {},
   body: {},
   meals: [],
+  workouts: [],
   context: {},
   updatedAt: Date.now(),
 })
