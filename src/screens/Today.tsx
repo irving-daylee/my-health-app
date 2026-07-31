@@ -7,8 +7,9 @@ import {
   dayDelta,
   estimatedBmr,
   fmt,
-  nl,
   intakeKcal,
+  mealKcal,
+  nl,
   signed,
   sleepHours,
   trendDelta,
@@ -255,9 +256,10 @@ export default function Today({ day, days, profile, onSave }: Props) {
             onChange={(v) => patch({ sleep: { ...day.sleep, wake: v } })}
           />
           <NumberField
-            label="Uren (overschrijft)"
+            label="Uren totaal"
             unit="uur"
             step={0.25}
+            placeholder="auto"
             value={day.sleep.hours}
             onChange={(v) => patch({ sleep: { ...day.sleep, hours: v } })}
           />
@@ -330,59 +332,76 @@ function FoodCard({ day, onSave }: { day: DayEntry; onSave: (d: DayEntry) => voi
   const update = (id: string, p: Partial<Meal>) =>
     setMeals(day.meals.map((m) => (m.id === id ? { ...m, ...p } : m)))
 
+  const digits = (v: string) => {
+    const cleaned = v.replace(/\D/g, '')
+    return cleaned === '' ? undefined : Number(cleaned)
+  }
+
   return (
     <Card title="Eten en drinken">
       {day.meals.length === 0 && <p className="empty">Nog niets gelogd voor deze dag.</p>}
 
       {day.meals.map((m) => (
-        <div className="meal-top" key={m.id}>
+        <div className="meal-row" key={m.id}>
           <input
             className="meal-name"
             value={m.name}
             placeholder="Wat at of dronk je?"
             onChange={(e) => update(m.id, { name: e.target.value })}
           />
-          <input
-            className="meal-kcal"
-            type="text"
-            inputMode="numeric"
-            placeholder="kcal"
-            value={m.kcal ?? ''}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, '')
-              update(m.id, { kcal: digits === '' ? undefined : Number(digits) })
-            }}
-          />
-          <button
-            className="remove"
-            aria-label={`${m.name || 'Item'} verwijderen`}
-            onClick={() => setMeals(day.meals.filter((x) => x.id !== m.id))}
-          >
-            ×
-          </button>
+          <div className="meal-calc">
+            <label>
+              <span>aantal</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="1"
+                value={m.qty ?? ''}
+                onChange={(e) => update(m.id, { qty: digits(e.target.value) })}
+              />
+            </label>
+            <span className="meal-op">×</span>
+            <label>
+              <span>kcal per stuk</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                value={m.kcal ?? ''}
+                onChange={(e) => update(m.id, { kcal: digits(e.target.value) })}
+              />
+            </label>
+            <span className="meal-op">=</span>
+            <span className="meal-sum">{mealKcal(m).toLocaleString('nl-NL')}</span>
+            <button
+              className="remove"
+              aria-label={`${m.name || 'Item'} verwijderen`}
+              onClick={() => setMeals(day.meals.filter((x) => x.id !== m.id))}
+            >
+              ×
+            </button>
+          </div>
         </div>
       ))}
 
       {day.meals.length > 0 && (
-        <div className="stat" style={{ marginTop: 12 }}>
-          <div className="k">Totaal</div>
-          <div className="v">
-            {Math.round(intakeKcal(day))}
-            <small>kcal</small>
-          </div>
+        <div className="meal-total">
+          <span>Totaal</span>
+          <strong>{intakeKcal(day).toLocaleString('nl-NL')} kcal</strong>
         </div>
       )}
 
       <button
         className="btn block secondary"
-        style={{ marginTop: 12 }}
+        style={{ marginTop: 14 }}
         onClick={() => setMeals([...day.meals, { id: crypto.randomUUID(), name: '' }])}
       >
         Item toevoegen
       </button>
       <p className="note" style={{ marginTop: 10 }}>
-        Een ruwe schatting is genoeg. Consequent te hoog of te laag schatten is geen probleem — de
-        trend klopt dan nog steeds, alleen het absolute getal niet.
+        Aantal keer calorieën per stuk. Vier glazen wijn wordt dus 4 × 150. Laat je het aantal leeg,
+        dan telt het als 1. Een ruwe schatting is genoeg — consequent te hoog of te laag schatten
+        houdt de trend nog steeds kloppend, alleen het absolute getal niet.
       </p>
     </Card>
   )

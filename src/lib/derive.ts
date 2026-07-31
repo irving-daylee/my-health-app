@@ -41,8 +41,11 @@ export function estimatedBmr(profile: Profile, weightKg: number, date: ISODate):
 export const bmi = (profile: Profile, weightKg: number) =>
   weightKg / (profile.heightM * profile.heightM)
 
+/** Calorieën van één regel: aantal × kcal per portie. */
+export const mealKcal = (m: { qty?: number; kcal?: number }) => (m.kcal ?? 0) * (m.qty ?? 1)
+
 export const intakeKcal = (day: DayEntry) =>
-  day.meals.reduce((sum, m) => sum + (m.kcal ?? 0), 0)
+  day.meals.reduce((sum, m) => sum + mealKcal(m), 0)
 
 export const burned = (day: DayEntry) => (day.restingKcal ?? 0) + (day.activeKcal ?? 0)
 

@@ -3,7 +3,9 @@ export type ISODate = string // YYYY-MM-DD
 export type Meal = {
   id: string
   name: string
-  /** geschat aantal calorieën — een ruwe inschatting is genoeg om de trend te zien */
+  /** aantal porties; leeg telt als 1 */
+  qty?: number
+  /** geschatte calorieën per portie — een ruwe inschatting is genoeg voor de trend */
   kcal?: number
 }
 

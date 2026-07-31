@@ -295,12 +295,16 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  /* Grid-items krijgen standaard min-width:auto en kunnen dan breder worden dan
+     hun kolom — de native tijdkiezer op iOS deed dat. */
+  min-width: 0;
 }
 
 .field label {
   font-size: 12px;
   font-weight: 600;
   color: var(--grey-600);
+  overflow-wrap: break-word;
 }
 
 .field input,
@@ -311,6 +315,7 @@ textarea {
   padding: 10px 12px;
   background: var(--white);
   width: 100%;
+  min-width: 0;
 }
 
 .field input:focus,
@@ -328,7 +333,7 @@ textarea {
 
 .fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -427,49 +432,38 @@ textarea {
   border-bottom: 0;
 }
 
-.meal-top + .meal-top {
-  margin-top: 8px;
-}
-
-.meal-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .meal-name {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   border: 1px solid var(--grey-200);
   border-radius: 10px;
   padding: 9px 11px;
   font-weight: 600;
 }
 
-.meal-kcal {
-  width: 82px;
-  flex: none;
-  text-align: right;
-  border: 1px solid var(--grey-200);
-  border-radius: 10px;
-  padding: 9px 11px;
-  font-weight: 700;
-}
-
-.meal-macros {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.meal-calc {
+  display: flex;
+  align-items: flex-end;
   gap: 6px;
   margin-top: 8px;
 }
 
-.meal-macros label {
+.meal-calc label {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
 
-.meal-macros span {
+.meal-calc label:first-of-type {
+  width: 62px;
+  flex: none;
+}
+
+.meal-calc label:last-of-type {
+  flex: 1;
+}
+
+.meal-calc span {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -477,13 +471,58 @@ textarea {
   color: var(--grey-600);
 }
 
-.meal-macros input {
+.meal-calc input {
   width: 100%;
+  min-width: 0;
   border: 1px solid var(--grey-200);
   border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 13px;
+  padding: 8px 9px;
+  font-size: 14px;
   text-align: center;
+}
+
+.meal-op {
+  padding-bottom: 9px;
+  font-size: 13px !important;
+  color: var(--grey-400) !important;
+}
+
+.meal-sum {
+  padding-bottom: 8px;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--navy) !important;
+  text-transform: none !important;
+  letter-spacing: -0.01em !important;
+  min-width: 44px;
+  text-align: right;
+}
+
+.meal-calc .remove {
+  padding-bottom: 6px;
+}
+
+.meal-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--grey);
+  border-radius: 10px;
+}
+
+.meal-total span {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--grey-600);
+}
+
+.meal-total strong {
+  font-size: 19px;
+  letter-spacing: -0.01em;
 }
 
 .remove {
