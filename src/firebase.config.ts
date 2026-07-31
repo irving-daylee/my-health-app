@@ -3,18 +3,15 @@
  * webapp die Firebase gebruikt en identificeren alleen het project. De
  * beveiliging zit in de database-rules (zie database.rules.json), die afdwingen
  * dat je alleen je eigen data kunt lezen en schrijven.
- *
- * Vervang de placeholders door de config uit Firebase Console →
- * Projectinstellingen → Je apps → Web-app.
  */
 export const firebaseConfig = {
-  apiKey: 'VUL_IN',
-  authDomain: 'VUL_IN.firebaseapp.com',
-  databaseURL: 'https://VUL_IN-default-rtdb.europe-west1.firebasedatabase.app',
-  projectId: 'VUL_IN',
-  storageBucket: 'VUL_IN.firebasestorage.app',
-  messagingSenderId: 'VUL_IN',
-  appId: 'VUL_IN',
+  apiKey: 'AIzaSyAjcwaMlULtgqJ_3FIHBWTcvz58UP2AzpQ',
+  authDomain: 'my-health-app-9243f.firebaseapp.com',
+  databaseURL: 'https://my-health-app-9243f-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'my-health-app-9243f',
+  storageBucket: 'my-health-app-9243f.firebasestorage.app',
+  messagingSenderId: '643188461616',
+  appId: '1:643188461616:web:11f7b6515d283bc2fb5df5',
 }
 
 /** Zolang dit false is draait de app puur lokaal, zonder sync en zonder login. */
