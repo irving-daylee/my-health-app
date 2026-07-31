@@ -137,3 +137,41 @@ export const fmt = (n: number | null | undefined, digits = 0, unit = '') =>
 
 export const signed = (n: number | null | undefined, digits = 1, unit = '') =>
   n == null ? '—' : `${n > 0 ? '+' : ''}${nl(n, digits)}${unit ? ' ' + unit : ''}`
+
+/**
+ * Een typefout in je gewicht (787 in plaats van 78,7) verpest je trend en je
+ * voorgestelde caloriedoel, en valt niet meteen op. Dit waarschuwt zonder tegen
+ * te houden — soms klopt een grote sprong gewoon.
+ */
+export function weightWarning(
+  days: DayEntry[],
+  date: ISODate,
+  weightKg: number | undefined,
+): string | null {
+  if (weightKg == null) return null
+  if (weightKg < 30 || weightKg > 300) {
+    return 'Dat lijkt geen gewicht in kilo\'s. Controleer of je de komma goed hebt gezet.'
+  }
+
+  const eerder = weighIns(days).filter((d) => d.date < date)
+  const vorige = eerder[eerder.length - 1]
+  if (!vorige?.body.weightKg) return null
+
+  const verschil = weightKg - vorige.body.weightKg
+  const dagen = Math.max(
+    1,
+    Math.round(
+      (new Date(date + 'T12:00:00').getTime() -
+        new Date(vorige.date + 'T12:00:00').getTime()) /
+        86_400_000,
+    ),
+  )
+  // Ruim twee kilo per dag verschil is fysiologisch vrijwel onmogelijk.
+  if (Math.abs(verschil) > 2 * dagen) {
+    return `${signed(verschil, 1, 'kg')} ten opzichte van je vorige weging (${nl(
+      vorige.body.weightKg,
+      1,
+    )} kg op ${vorige.date}). Klopt dat, of staat de komma verkeerd?`
+  }
+  return null
+}

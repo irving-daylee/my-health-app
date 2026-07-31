@@ -18,6 +18,7 @@ import {
   signed,
   sleepHours,
   trendDelta,
+  weightWarning,
   workoutKcal,
   workoutMinutes,
 } from '../lib/derive'
@@ -41,6 +42,7 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
   const toTarget =
     day.body.weightKg != null ? day.body.weightKg - profile.targetWeightKg : null
   const bmr = day.body.weightKg ? estimatedBmr(profile, day.body.weightKg, day.date) : null
+  const gewichtWaarschuwing = weightWarning(days, day.date, day.body.weightKg)
 
   return (
     <>
@@ -189,6 +191,12 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
             onChange={(v) => patchBody({ visceralFat: v })}
           />
         </div>
+        {gewichtWaarschuwing && (
+          <p className="note warn" style={{ marginTop: 10 }}>
+            {gewichtWaarschuwing}
+          </p>
+        )}
+
         <div className="checkline" style={{ marginTop: 12 }}>
           <Toggle
             label="Nuchter gewogen (ochtend)"
