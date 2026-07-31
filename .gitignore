@@ -2,3 +2,8 @@ node_modules/
 dist/
 .DS_Store
 *.local
+
+# Nooit in git: het database-geheim en de opgehaalde gezondheidsdata.
+# Deze repo is publiek.
+.env.local
+.data/
