@@ -911,3 +911,47 @@ textarea {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ---------- foutscherm ---------- */
+
+.error-screen {
+  min-height: 100vh;
+  background: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.error-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.error-card h1 {
+  font-size: 19px;
+  margin-bottom: 8px;
+}
+
+.error-card p {
+  font-size: 13px;
+  color: var(--grey-600);
+  line-height: 1.55;
+  margin: 0 0 14px;
+}
+
+.error-card pre {
+  background: var(--grey);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 14px;
+  max-height: 180px;
+  overflow: auto;
+}

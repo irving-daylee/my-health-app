@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ErrorScreen } from './components/ErrorScreen'
 import type { DayEntry, ISODate, Profile, Settings } from './types'
 import { emptyDay } from './types'
 import { allDays, getProfile, getSettings, putDay, putProfile, putSettings } from './lib/db'
@@ -34,6 +35,7 @@ export default function App() {
   const [days, setDays] = useState<DayEntry[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const applyRemote = useCallback((nextDays: DayEntry[], nextProfile: Profile) => {
     setDays(nextDays)
@@ -43,13 +45,20 @@ export default function App() {
   const { user, authReady, state: syncState, syncDay, syncProfile } = useCloudSync(applyRemote)
 
   useEffect(() => {
-    Promise.all([allDays(), getProfile(), getSettings()]).then(([d, p, s]) => {
-      setDays(d)
-      setProfile(p)
-      setSettings(s)
-      setUnlocked(!s.pinHash)
-      setReady(true)
-    })
+    // Zonder deze catch blijft de app op een wit scherm hangen zodra IndexedDB
+    // niet beschikbaar is — bijvoorbeeld in een privévenster of bij geblokkeerde
+    // site-opslag.
+    Promise.all([allDays(), getProfile(), getSettings()])
+      .then(([d, p, s]) => {
+        setDays(d)
+        setProfile(p)
+        setSettings(s)
+        setUnlocked(!s.pinHash)
+      })
+      .catch((e: unknown) => {
+        setLoadError(e instanceof Error ? `${e.name}: ${e.message}` : String(e))
+      })
+      .finally(() => setReady(true))
   }, [])
 
   const reload = useCallback(async () => setDays(await allDays()), [])
@@ -87,6 +96,15 @@ export default function App() {
   const showToast = (text: string) => {
     setToast(text)
     setTimeout(() => setToast(''), 3000)
+  }
+
+  if (loadError) {
+    return (
+      <ErrorScreen
+        title="Je opgeslagen gegevens zijn niet te openen"
+        detail={loadError}
+      />
+    )
   }
 
   if (!ready || !authReady || !profile || !settings) return null

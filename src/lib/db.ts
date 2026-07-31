@@ -11,7 +11,13 @@ let dbPromise: Promise<IDBDatabase> | null = null
 function open(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise
   dbPromise = new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') {
+      reject(new Error('Deze browser geeft geen toegang tot lokale opslag.'))
+      return
+    }
     const req = indexedDB.open(DB_NAME, DB_VERSION)
+    // Een geblokkeerde of nooit-openende verbinding hangt anders oneindig.
+    setTimeout(() => reject(new Error('Lokale opslag reageert niet.')), 8000)
     req.onupgradeneeded = () => {
       const db = req.result
       if (!db.objectStoreNames.contains(DAYS)) db.createObjectStore(DAYS, { keyPath: 'date' })
