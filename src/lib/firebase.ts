@@ -1,6 +1,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import {
   GoogleAuthProvider,
+  sendPasswordResetEmail,
   browserLocalPersistence,
   getAuth,
   onAuthStateChanged,
@@ -50,6 +51,9 @@ export const loginWithGoogle = () => signInWithPopup(init().auth, new GoogleAuth
 
 export const logout = () => signOut(init().auth)
 
+/** Firebase mailt zelf een resetlink; wij krijgen geen wachtwoord te zien. */
+export const resetPassword = (email: string) => sendPasswordResetEmail(init().auth, email)
+
 /** Luistert op het hele gebruikersknooppunt; geeft een opzegfunctie terug. */
 export function watchData(uid: string, cb: (data: RemoteData | null) => void): () => void {
   const node = ref(init().db, `users/${uid}`)
@@ -79,4 +83,5 @@ export const friendlyAuthError = (code: string): string =>
     'auth/network-request-failed': 'Geen verbinding. Je data blijft lokaal bewaard.',
     'auth/popup-closed-by-user': 'Inloggen afgebroken.',
     'auth/operation-not-allowed': 'Deze inlogmethode staat uit in Firebase.',
+    'auth/missing-email': 'Vul eerst je e-mailadres in.',
   })[code] ?? 'Inloggen mislukt. Probeer het opnieuw.'

@@ -7,3 +7,4 @@ dist/
 # Deze repo is publiek.
 .env.local
 .data/
+.secrets/

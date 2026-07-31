@@ -154,6 +154,19 @@ export default function App() {
         )}
       </header>
 
+      {syncEnabled && !user && skipLogin && (
+        <button
+          className="local-banner"
+          onClick={() => {
+            localStorage.removeItem(SKIP_LOGIN)
+            setSkipLogin(false)
+          }}
+        >
+          <span>Lokale modus — je data blijft op dit toestel en synct niet.</span>
+          <strong>Inloggen</strong>
+        </button>
+      )}
+
       <main className="content">
         {tab === 'today' && <Today day={day} days={days} profile={profile} onSave={saveDay} />}
         {tab === 'trends' && <Trends days={days} profile={profile} />}

@@ -879,3 +879,35 @@ textarea {
     opacity: 0.35;
   }
 }
+
+.login-sep {
+  border: 0;
+  border-top: 1px solid var(--grey-200);
+  margin: 18px 0 4px;
+}
+
+/* Lokale modus mag geen stille toestand zijn: zolang je niet ingelogd bent en
+   sync aan staat, blijft dit staan en is het één tik om alsnog in te loggen. */
+.local-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #f0d9b8;
+  background: #fdf5e8;
+  color: #7a4c14;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: left;
+  padding: 10px 16px;
+}
+
+.local-banner strong {
+  flex: none;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
