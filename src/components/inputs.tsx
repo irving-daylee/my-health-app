@@ -85,6 +85,100 @@ export function TextField(props: {
   )
 }
 
+/**
+ * Tijd als gewoon tekstveld. De native tijdkiezer heeft per browser een eigen
+ * minimumbreedte en laat zich niet altijd leegmaken; dit veld doet allebei wel.
+ * Invoer mag los: 7, 23:15, 2315 en 23.15 worden allemaal HH:MM.
+ */
+export function TimeField(props: {
+  label: string
+  value: string | undefined
+  onChange: (v: string | undefined) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const normaliseer = (raw: string): string | undefined => {
+    const cijfers = raw.replace(/\D/g, '')
+    if (cijfers.length === 0) return undefined
+    let u: number
+    let m = 0
+    if (cijfers.length <= 2) u = Number(cijfers)
+    else {
+      u = Number(cijfers.slice(0, cijfers.length - 2))
+      m = Number(cijfers.slice(-2))
+    }
+    if (u > 23 || m > 59) return undefined
+    return `${String(u).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  return (
+    <div className="field">
+      <label>{props.label}</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        enterKeyHint="done"
+        autoComplete="off"
+        placeholder="23:15"
+        value={draft ?? props.value ?? ''}
+        onChange={(e) => {
+          const raw = e.target.value.replace(/[^\d:.]/g, '')
+          setDraft(raw)
+          props.onChange(normaliseer(raw))
+        }}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={() => setDraft(null)}
+      />
+    </div>
+  )
+}
+
+/** Datum als DD-MM-JJJJ, om dezelfde reden als TimeField. */
+export function DateField(props: {
+  label: string
+  value: string | undefined
+  onChange: (iso: string | undefined) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const naarISO = (raw: string): string | undefined => {
+    const c = raw.replace(/\D/g, '')
+    if (c.length !== 8) return undefined
+    const [d, m, j] = [c.slice(0, 2), c.slice(2, 4), c.slice(4)]
+    const datum = new Date(`${j}-${m}-${d}T12:00:00`)
+    if (Number.isNaN(datum.getTime())) return undefined
+    return `${j}-${m}-${d}`
+  }
+
+  const toon = (iso: string | undefined) => {
+    if (!iso) return ''
+    const [j, m, d] = iso.split('-')
+    return `${d}-${m}-${j}`
+  }
+
+  return (
+    <div className="field">
+      <label>{props.label}</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        enterKeyHint="done"
+        autoComplete="off"
+        placeholder="15-07-1991"
+        value={draft ?? toon(props.value)}
+        onChange={(e) => {
+          const raw = e.target.value.replace(/[^\d-]/g, '')
+          setDraft(raw)
+          const iso = naarISO(raw)
+          if (iso) props.onChange(iso)
+        }}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={() => setDraft(null)}
+      />
+    </div>
+  )
+}
+
 export function Toggle(props: { label: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
     <button

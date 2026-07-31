@@ -1,5 +1,5 @@
 import type { Body, DayEntry, Meal, Profile } from '../types'
-import { Card, NumberField, Scale, TextField, Toggle } from '../components/inputs'
+import { Card, NumberField, Scale, TimeField, Toggle } from '../components/inputs'
 import {
   balance,
   bmi,
@@ -243,17 +243,13 @@ export default function Today({ day, days, profile, onSave }: Props) {
 
       <Card title="Slaap">
         <div className="fields">
-          <TextField
+          <TimeField
             label="Naar bed"
-            type="time"
-            wide
             value={day.sleep.bedtime}
             onChange={(v) => patch({ sleep: { ...day.sleep, bedtime: v } })}
           />
-          <TextField
+          <TimeField
             label="Opgestaan"
-            type="time"
-            wide
             value={day.sleep.wake}
             onChange={(v) => patch({ sleep: { ...day.sleep, wake: v } })}
           />

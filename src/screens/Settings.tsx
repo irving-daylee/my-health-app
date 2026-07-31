@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { DayEntry, Profile, Settings } from '../types'
-import { Card, NumberField, TextField } from '../components/inputs'
+import { Card, DateField, NumberField } from '../components/inputs'
 import { exportAll, importAll } from '../lib/db'
 import { ageAt, todayISO } from '../lib/derive'
 import { PIN_LENGTH, biometricsAvailable, hashPin, registerBiometrics } from '../lib/lock'
@@ -132,10 +132,8 @@ export default function SettingsScreen({
 
       <Card title="Profiel">
         <div className="fields">
-          <TextField
+          <DateField
             label="Geboortedatum"
-            type="date"
-            wide
             value={profile.birthDate}
             onChange={(v) => v && onProfile({ ...profile, birthDate: v })}
           />
