@@ -345,6 +345,9 @@ function FoodCard({
   onFoodsChanged: () => void
 }) {
   const [foods, setFoods] = useState<FoodItem[]>([])
+  // Welke regel zijn suggesties toont. Deze status hoort hier en niet in het
+  // veld zelf: dan kan een herberekening van de lijst hem niet dichttrekken.
+  const [openFor, setOpenFor] = useState<string | null>(null)
 
   useEffect(() => {
     void allFoods().then(setFoods)
@@ -387,6 +390,9 @@ function FoodCard({
           <NameField
             value={m.name}
             foods={foods}
+            open={openFor === m.id}
+            onOpen={() => setOpenFor(m.id)}
+            onClose={() => setOpenFor(null)}
             onChange={(name) => update(m.id, { name })}
             onPick={(item) => update(m.id, { name: item.name, kcal: item.kcal })}
           />
@@ -476,29 +482,42 @@ function FoodCard({
 function NameField({
   value,
   foods,
+  open,
+  onOpen,
+  onClose,
   onChange,
   onPick,
 }: {
   value: string
   foods: FoodItem[]
+  open: boolean
+  onOpen: () => void
+  onClose: () => void
   onChange: (name: string) => void
   onPick: (item: FoodItem) => void
 }) {
-  const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
 
   const treffers = value.trim() ? searchFoods(foods, value) : []
-  const toon = open && treffers.length > 0 && !treffers.some((f) => f.name === value)
+  const toon = open && treffers.length > 0
 
-  // Tikken buiten het veld sluit de lijst; anders blijft hij op mobiel hangen.
+  // De lijst blijft staan tot je kiest, ernaast tikt of Escape drukt. Bewust
+  // niet sluiten op blur: op mobiel sluit het toetsenbord dan de lijst mee.
   useEffect(() => {
     if (!toon) return
     const buiten = (e: PointerEvent) => {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false)
+      if (!wrap.current?.contains(e.target as Node)) onClose()
+    }
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
     }
     document.addEventListener('pointerdown', buiten)
-    return () => document.removeEventListener('pointerdown', buiten)
-  }, [toon])
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', buiten)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [toon, onClose])
 
   return (
     <div className="name-field" ref={wrap}>
@@ -509,9 +528,9 @@ function NameField({
         autoComplete="off"
         onChange={(e) => {
           onChange(e.target.value)
-          setOpen(true)
+          onOpen()
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={onOpen}
       />
       {toon && (
         <ul className="suggestions">
@@ -521,7 +540,7 @@ function NameField({
                 type="button"
                 onClick={() => {
                   onPick(f)
-                  setOpen(false)
+                  onClose()
                 }}
               >
                 <span>{f.name}</span>
@@ -534,7 +553,6 @@ function NameField({
     </div>
   )
 }
-
 
 /* ---------------- training ---------------- */
 
