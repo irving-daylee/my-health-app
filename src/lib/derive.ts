@@ -38,6 +38,20 @@ export function estimatedBmr(profile: Profile, weightKg: number, date: ISODate):
   return Math.round(profile.sex === 'male' ? base + 5 : base - 161)
 }
 
+/**
+ * Zet een leeftijd terug om naar een geboortedatum, met behoud van dag en
+ * maand. Zo blijft je leeftijd vanzelf kloppen zodra je jarig bent, in plaats
+ * van te bevriezen op het getal dat je ooit invulde.
+ */
+export function birthDateForAge(current: ISODate, age: number): ISODate {
+  const [, m, d] = current.split('-')
+  const nu = new Date()
+  const jarigGeweest =
+    nu.getMonth() + 1 > Number(m) || (nu.getMonth() + 1 === Number(m) && nu.getDate() >= Number(d))
+  const jaar = nu.getFullYear() - age - (jarigGeweest ? 0 : 1)
+  return `${jaar}-${m}-${d}`
+}
+
 export const bmi = (profile: Profile, weightKg: number) =>
   weightKg / (profile.heightM * profile.heightM)
 

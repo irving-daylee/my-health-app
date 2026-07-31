@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import type { DayEntry, Profile, Settings } from '../types'
-import { Card, DateField, NumberField } from '../components/inputs'
+import { Card, NumberField } from '../components/inputs'
 import { exportAll, importAll } from '../lib/db'
-import { ageAt, todayISO } from '../lib/derive'
+import { ageAt, birthDateForAge, todayISO } from '../lib/derive'
 import { PIN_LENGTH, biometricsAvailable, hashPin, registerBiometrics } from '../lib/lock'
 import { claudeSummary } from '../lib/share'
 import { logout, syncEnabled } from '../lib/firebase'
@@ -132,10 +132,16 @@ export default function SettingsScreen({
 
       <Card title="Profiel">
         <div className="fields">
-          <DateField
-            label="Geboortedatum"
-            value={profile.birthDate}
-            onChange={(v) => v && onProfile({ ...profile, birthDate: v })}
+          <NumberField
+            label="Leeftijd"
+            unit="jaar"
+            value={ageAt(profile, todayISO())}
+            onChange={(v) =>
+              v != null &&
+              v > 0 &&
+              v < 120 &&
+              onProfile({ ...profile, birthDate: birthDateForAge(profile.birthDate, v) })
+            }
           />
           <NumberField
             label="Lengte"
@@ -183,8 +189,9 @@ export default function SettingsScreen({
           </div>
         </div>
         <p className="note" style={{ marginTop: 10 }}>
-          Leeftijd: {ageAt(profile, todayISO())} jaar. Geslacht is alleen nodig voor de
-          basaalverbruik-schatting; zonder invulling wordt die simpelweg niet getoond.
+          Je leeftijd telt vanzelf op zodra je jarig bent — je geboortedag blijft onderwater
+          bewaard. Geslacht is alleen nodig voor de basaalverbruik-schatting; zonder invulling
+          wordt die simpelweg niet getoond.
         </p>
       </Card>
 
