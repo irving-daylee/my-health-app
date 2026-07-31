@@ -3,7 +3,11 @@ import type { DayEntry, ISODate, Profile, Settings } from './types'
 import { emptyDay } from './types'
 import { allDays, getProfile, getSettings, putDay, putProfile, putSettings } from './lib/db'
 import { formatDate, shiftISO, todayISO } from './lib/derive'
+import { syncEnabled } from './lib/firebase'
+import { syncLabel } from './lib/sync'
+import { useCloudSync } from './lib/useCloudSync'
 import Lock from './screens/Lock'
+import Login from './screens/Login'
 import Today from './screens/Today'
 import Trends from './screens/Trends'
 import Insights from './screens/Insights'
@@ -18,15 +22,25 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'settings', label: 'Instellingen', icon: '⚙' },
 ]
 
+const SKIP_LOGIN = 'gezondheid_lokaal'
+
 export default function App() {
   const [ready, setReady] = useState(false)
   const [toast, setToast] = useState('')
   const [unlocked, setUnlocked] = useState(false)
+  const [skipLogin, setSkipLogin] = useState(localStorage.getItem(SKIP_LOGIN) === '1')
   const [tab, setTab] = useState<Tab>('today')
   const [date, setDate] = useState<ISODate>(todayISO())
   const [days, setDays] = useState<DayEntry[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
+
+  const applyRemote = useCallback((nextDays: DayEntry[], nextProfile: Profile) => {
+    setDays(nextDays)
+    setProfile(nextProfile)
+  }, [])
+
+  const { user, authReady, state: syncState, syncDay, syncProfile } = useCloudSync(applyRemote)
 
   useEffect(() => {
     Promise.all([allDays(), getProfile(), getSettings()]).then(([d, p, s]) => {
@@ -40,44 +54,65 @@ export default function App() {
 
   const reload = useCallback(async () => setDays(await allDays()), [])
 
-  const day = useMemo(
-    () => days.find((d) => d.date === date) ?? emptyDay(date),
-    [days, date],
-  )
+  const day = useMemo(() => days.find((d) => d.date === date) ?? emptyDay(date), [days, date])
 
   const saveDay = useCallback(
     async (next: DayEntry) => {
+      const stamped = { ...next, updatedAt: Date.now() }
       setDays((prev) => {
-        const rest = prev.filter((d) => d.date !== next.date)
-        return [...rest, next].sort((a, b) => a.date.localeCompare(b.date))
+        const rest = prev.filter((d) => d.date !== stamped.date)
+        return [...rest, stamped].sort((a, b) => a.date.localeCompare(b.date))
       })
-      await putDay(next)
+      await putDay(stamped)
+      void syncDay(stamped)
     },
-    [],
+    [syncDay],
   )
 
-  const saveProfile = useCallback(async (p: Profile) => {
-    setProfile(p)
-    await putProfile(p)
-  }, [])
+  const saveProfile = useCallback(
+    async (p: Profile) => {
+      const stamped = { ...p, updatedAt: Date.now() }
+      setProfile(stamped)
+      await putProfile(stamped)
+      void syncProfile(stamped)
+    },
+    [syncProfile],
+  )
 
   const saveSettings = useCallback(async (s: Settings) => {
     setSettings(s)
     await putSettings(s)
   }, [])
 
-  const showVersion = () => {
-    setToast(`Versie ${__APP_VERSION__} — dit is wat er nu op dit toestel draait`)
+  const showToast = (text: string) => {
+    setToast(text)
     setTimeout(() => setToast(''), 3000)
   }
 
-  if (!ready || !profile || !settings) return null
+  if (!ready || !authReady || !profile || !settings) return null
 
-  if (!unlocked) {
-    return <Lock settings={settings} onUnlock={() => setUnlocked(true)} />
+  if (!unlocked) return <Lock settings={settings} onUnlock={() => setUnlocked(true)} />
+
+  if (syncEnabled && !user && !skipLogin) {
+    return (
+      <Login
+        onLocalOnly={() => {
+          localStorage.setItem(SKIP_LOGIN, '1')
+          setSkipLogin(true)
+        }}
+      />
+    )
   }
 
   const isToday = date === todayISO()
+  const versionBadge = (
+    <span
+      className="app-version"
+      onClick={() => showToast(`Versie ${__APP_VERSION__} — dit is wat er nu op dit toestel draait`)}
+    >
+      v{__APP_VERSION__}
+    </span>
+  )
 
   return (
     <div className="app">
@@ -91,9 +126,7 @@ export default function App() {
               <span style={{ textTransform: 'capitalize' }}>
                 {isToday ? 'Vandaag' : formatDate(date).split(' ')[0]}
               </span>
-              <span className="app-version" onClick={showVersion}>
-                v{__APP_VERSION__}
-              </span>
+              {versionBadge}
               <span className="sub" style={{ display: 'block' }}>
                 {formatDate(date)}
               </span>
@@ -109,10 +142,15 @@ export default function App() {
         ) : (
           <h1>
             {TABS.find((t) => t.id === tab)!.label}
-            <span className="app-version" onClick={showVersion}>
-              v{__APP_VERSION__}
-            </span>
+            {versionBadge}
           </h1>
+        )}
+        {syncEnabled && (
+          <span
+            className={`sync-dot ${syncState}`}
+            title={syncLabel[syncState]}
+            onClick={() => showToast(syncLabel[syncState])}
+          />
         )}
       </header>
 
@@ -125,9 +163,15 @@ export default function App() {
             profile={profile}
             settings={settings}
             days={days}
+            user={user}
+            syncState={syncState}
             onProfile={saveProfile}
             onSettings={saveSettings}
             onReload={reload}
+            onLoginAgain={() => {
+              localStorage.removeItem(SKIP_LOGIN)
+              setSkipLogin(false)
+            }}
           />
         )}
       </main>

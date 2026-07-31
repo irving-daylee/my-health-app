@@ -54,6 +54,7 @@ export type DayEntry = {
 export type Sex = 'male' | 'female'
 
 export type Profile = {
+  updatedAt?: number
   birthDate: ISODate
   heightM: number
   targetWeightKg: number

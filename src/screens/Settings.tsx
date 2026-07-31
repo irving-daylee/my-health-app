@@ -5,23 +5,32 @@ import { exportAll, importAll } from '../lib/db'
 import { ageAt, todayISO } from '../lib/derive'
 import { PIN_LENGTH, biometricsAvailable, hashPin, registerBiometrics } from '../lib/lock'
 import { claudeSummary } from '../lib/share'
+import { logout, syncEnabled } from '../lib/firebase'
+import { syncLabel, type SyncState } from '../lib/sync'
+import type { User } from 'firebase/auth'
 
 type Props = {
   profile: Profile
   settings: Settings
   days: DayEntry[]
+  user: User | null
+  syncState: SyncState
   onProfile: (p: Profile) => void
   onSettings: (s: Settings) => void
   onReload: () => Promise<void>
+  onLoginAgain: () => void
 }
 
 export default function SettingsScreen({
   profile,
   settings,
   days,
+  user,
+  syncState,
   onProfile,
   onSettings,
   onReload,
+  onLoginAgain,
 }: Props) {
   const [msg, setMsg] = useState('')
   const [pin, setPin] = useState('')
@@ -95,6 +104,32 @@ export default function SettingsScreen({
 
   return (
     <>
+      {syncEnabled && (
+        <Card title="Synchronisatie">
+          {user ? (
+            <>
+              <p className="note">
+                Ingelogd als <strong>{user.email ?? 'onbekend account'}</strong>.{' '}
+                {syncLabel[syncState]}.
+              </p>
+              <button className="btn secondary" style={{ marginTop: 12 }} onClick={() => void logout()}>
+                Uitloggen
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="note">
+                Je werkt nu alleen op dit toestel. Log in om je dagen te delen met je andere
+                apparaten — wat hier al staat wordt daarbij meegenomen.
+              </p>
+              <button className="btn" style={{ marginTop: 12 }} onClick={onLoginAgain}>
+                Inloggen
+              </button>
+            </>
+          )}
+        </Card>
+      )}
+
       <Card title="Profiel">
         <div className="fields">
           <TextField

@@ -37,8 +37,16 @@ function tx<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) 
 
 export const getDay = (date: ISODate) => tx<DayEntry | undefined>(DAYS, 'readonly', (s) => s.get(date))
 
+/** Schrijft de dag met een verse tijdstempel — voor bewerkingen door de gebruiker. */
 export const putDay = (day: DayEntry) =>
   tx(DAYS, 'readwrite', (s) => s.put({ ...day, updatedAt: Date.now() }))
+
+/**
+ * Schrijft de dag precies zoals hij is. Voor sync en import: daar is updatedAt
+ * juist het gegeven waarop we beslissen wie wint, dus dat mag niet overschreven
+ * worden.
+ */
+export const putDayRaw = (day: DayEntry) => tx(DAYS, 'readwrite', (s) => s.put(day))
 
 export const deleteDay = (date: ISODate) => tx(DAYS, 'readwrite', (s) => s.delete(date))
 
@@ -72,7 +80,7 @@ export async function importAll(payload: unknown) {
   if (!data || !Array.isArray(data.days)) throw new Error('Onbekend bestandsformaat')
   if (data.profile) await putProfile({ ...defaultProfile, ...data.profile })
   for (const day of data.days) {
-    if (typeof day?.date === 'string') await putDay(day)
+    if (typeof day?.date === 'string') await putDayRaw(day)
   }
   return data.days.length
 }

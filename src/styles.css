@@ -806,3 +806,76 @@ textarea {
   line-height: 1.6;
   color: var(--grey-600);
 }
+
+/* ---------- login + sync ---------- */
+
+.login {
+  min-height: 100vh;
+  background: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-box {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.login-box h1 {
+  margin-bottom: 6px;
+}
+
+.login-sub {
+  font-size: 13px;
+  color: var(--grey-600);
+  margin: 0 0 20px;
+  line-height: 1.55;
+}
+
+.btn.ghost.block {
+  width: 100%;
+  text-align: center;
+}
+
+/* Zo zie je in één oogopslag of je wijzigingen de overkant hebben bereikt. */
+.sync-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  cursor: pointer;
+  background: var(--grey-400);
+}
+
+.sync-dot.synced {
+  background: #4ade80;
+}
+
+.sync-dot.syncing {
+  background: #fbbf24;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.sync-dot.offline {
+  background: var(--grey-400);
+}
+
+.sync-dot.error {
+  background: #f87171;
+}
+
+.sync-dot.off {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
