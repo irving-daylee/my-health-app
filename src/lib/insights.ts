@@ -1,6 +1,7 @@
 import type { DayEntry, Profile } from '../types'
 import {
   burned,
+  lastMealMinutes,
   intakeKcal,
   intakeProtein,
   sleepHours,
@@ -403,6 +404,36 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
           ? 'Boven de richtlijn van 150 minuten matige inspanning per week.'
           : 'De gangbare richtlijn is 150 minuten per week. Dit telt alleen wat je zelf logt — losse beweging zit in je beweegminuten.',
     })
+  }
+
+  // laat eten tegenover hoe je die nacht sliep
+  const metTijdEnKwaliteit = days.filter(
+    (d) => lastMealMinutes(d) != null && d.sleep.quality != null,
+  )
+  if (metTijdEnKwaliteit.length >= 8) {
+    const laat = metTijdEnKwaliteit.filter((d) => lastMealMinutes(d)! >= 21 * 60 + 30)
+    const vroeg = metTijdEnKwaliteit.filter((d) => lastMealMinutes(d)! < 21 * 60 + 30)
+    if (laat.length >= 3 && vroeg.length >= 3) {
+      const verschil =
+        mean(laat.map((d) => d.sleep.quality!)) - mean(vroeg.map((d) => d.sleep.quality!))
+      if (Math.abs(verschil) >= 0.5) {
+        out.push({
+          tag: verschil < 0 ? 'warning' : 'neutral',
+          tagText: 'Laat eten',
+          title:
+            verschil < 0
+              ? 'Na laat eten slaap je slechter'
+              : 'Laat eten lijkt je slaap niet te storen',
+          body: `Op ${s(laat.length, 'avond', 'avonden')} at je na 21:30; die nachten gaf je gemiddeld ${nf(
+            mean(laat.map((d) => d.sleep.quality!)),
+            1,
+          )} van 5, tegen ${nf(
+            mean(vroeg.map((d) => d.sleep.quality!)),
+            1,
+          )} na een vroegere laatste maaltijd. Een verband, geen bewijs — maar wel iets om op te letten.`,
+        })
+      }
+    }
   }
 
   // hoe compleet log je eigenlijk?

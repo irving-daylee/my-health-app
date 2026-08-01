@@ -179,3 +179,24 @@ export function weightWarning(
   }
   return null
 }
+
+/** Minuten sinds middernacht; 'HH:MM' -> getal, ongeldig -> null. */
+export function minutesOfDay(time: string | undefined): number | null {
+  if (!time) return null
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time)
+  if (!m) return null
+  const u = Number(m[1])
+  const min = Number(m[2])
+  return u > 23 || min > 59 ? null : u * 60 + min
+}
+
+/** Het laatste tijdstip waarop je die dag iets at of dronk. */
+export function lastMealMinutes(day: DayEntry): number | null {
+  const tijden = day.meals.map((m) => minutesOfDay(m.time)).filter((x): x is number => x != null)
+  return tijden.length ? Math.max(...tijden) : null
+}
+
+export const nowTime = () => {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}

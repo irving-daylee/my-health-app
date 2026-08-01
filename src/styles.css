@@ -1303,3 +1303,12 @@ textarea {
   font-size: 13px;
   color: var(--grey-600);
 }
+
+/* Tijdstip staat vooraan in de rekenregel en is smaller dan de rest. */
+.meal-calc label.meal-time {
+  max-width: 62px;
+}
+
+.meal-calc label.meal-time input {
+  text-align: center;
+}

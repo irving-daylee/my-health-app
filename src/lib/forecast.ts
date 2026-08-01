@@ -1,5 +1,14 @@
 import type { DayEntry, Profile } from '../types'
-import { burned, estimatedBmr, intakeKcal, weighIns, weightTrend } from './derive'
+import {
+  burned,
+  estimatedBmr,
+  intakeKcal,
+  mealKcal,
+  minutesOfDay,
+  todayISO,
+  weighIns,
+  weightTrend,
+} from './derive'
 
 const KCAL_PER_KG = 7700
 const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length
@@ -21,6 +30,36 @@ export type Forecast = {
   /** je gemiddelde inname over de gelogde dagen, om vandaag tegen af te zetten */
   averageIntake: number | null
   belowBmr: boolean
+  /** verwachte dagtotaal op basis van jouw eigen eetritme, of null als dat nog niet te zeggen is */
+  projectedIntake: number | null
+  /** aandeel van een gemiddelde dag dat je op dit uur normaal al binnen hebt */
+  shareSoFar: number | null
+}
+
+/**
+ * Hoeveel procent van je dag je normaal gesproken op dit uur al gegeten hebt.
+ * Alleen dagen met tijdstippen tellen mee; met minder dan vijf zulke dagen is
+ * het patroon te dun om iets op te baseren.
+ */
+function typicalShareByNow(days: DayEntry[], minutesNow: number): number | null {
+  const aandelen: number[] = []
+
+  for (const d of days) {
+    const totaal = intakeKcal(d)
+    if (totaal <= 0) continue
+    const getimed = d.meals.filter((m) => minutesOfDay(m.time) != null)
+    if (getimed.length < 2) continue
+
+    const totNu = getimed
+      .filter((m) => minutesOfDay(m.time)! <= minutesNow)
+      .reduce((sum, m) => sum + mealKcal(m), 0)
+    aandelen.push(totNu / totaal)
+  }
+
+  if (aandelen.length < 5) return null
+  const gemiddeld = aandelen.reduce((s, a) => s + a, 0) / aandelen.length
+  // Te vroeg op de dag is het aandeel zo klein dat delen erdoor onzin oplevert.
+  return gemiddeld >= 0.15 ? gemiddeld : null
 }
 
 /**
@@ -58,9 +97,24 @@ export function forecast(today: DayEntry, days: DayEntry[], profile: Profile): F
   const kgPerWeekAtGoal =
     balanceIfGoal == null ? null : Math.round(((balanceIfGoal * 7) / KCAL_PER_KG) * 100) / 100
 
+  // Alleen zinvol voor vandaag: bij een dag uit het verleden is 'nu' betekenisloos.
+  const isVandaag = today.date === todayISO()
+  const nu = new Date()
+  const minutenNu = nu.getHours() * 60 + nu.getMinutes()
+  const shareSoFar = isVandaag
+    ? typicalShareByNow(
+        days.filter((d) => d.date !== today.date),
+        minutenNu,
+      )
+    : null
+  const projectedIntake =
+    shareSoFar != null && intake > 0 ? Math.round(intake / shareSoFar) : null
+
   return {
     intake,
     goal,
+    projectedIntake,
+    shareSoFar,
     bmr,
     expectedBurn,
     burnIsMeasured,

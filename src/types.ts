@@ -9,6 +9,8 @@ export type Meal = {
   kcal?: number
   /** eiwit in gram per portie; komt meestal uit je itemlijst */
   proteinG?: number
+  /** HH:MM — automatisch gezet bij toevoegen op de dag zelf, aanpasbaar */
+  time?: string
 }
 
 export type Sleep = {

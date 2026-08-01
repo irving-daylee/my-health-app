@@ -15,9 +15,11 @@ import {
   intakeKcal,
   intakeProtein,
   mealKcal,
+  nowTime,
   nl,
   signed,
   sleepHours,
+  todayISO,
   trendDelta,
   weightWarning,
   workoutKcal,
@@ -439,6 +441,17 @@ function FoodCard({
             onSettled={leer}
           />
           <div className="meal-calc">
+            <label className="meal-time">
+              <span>tijd</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="--:--"
+                value={m.time ?? ''}
+                onChange={(e) => update(m.id, { time: e.target.value || undefined })}
+                onBlur={leer}
+              />
+            </label>
             <label>
               <span>aantal</span>
               <input
@@ -510,7 +523,17 @@ function FoodCard({
       <button
         className="btn block secondary"
         style={{ marginTop: 14 }}
-        onClick={() => setMeals([...day.meals, { id: crypto.randomUUID(), name: '' }])}
+        onClick={() =>
+          setMeals([
+            ...day.meals,
+            {
+              id: crypto.randomUUID(),
+              name: '',
+              // Op een dag uit het verleden zegt 'nu' niets, dus dan leeg laten.
+              time: day.date === todayISO() ? nowTime() : undefined,
+            },
+          ])
+        }
       >
         Item toevoegen
       </button>
@@ -776,6 +799,18 @@ function Vooruitblik({
       <h4>Waar kom je vandaag uit?</h4>
 
       <ul className="forecast-lines">
+        {f.projectedIntake != null && (
+          <li>
+            <span>Op dit tempo eet je vandaag</span>
+            <strong className={f.projectedIntake > f.goal ? 'warn' : 'good'}>
+              ~{f.projectedIntake.toLocaleString('nl-NL')} kcal
+              <em>
+                normaal heb je nu {Math.round((f.shareSoFar ?? 0) * 100)}% van je dag binnen
+              </em>
+            </strong>
+          </li>
+        )}
+
         {f.expectedBurn != null && (
           <li>
             <span>Verbranding vandaag</span>
@@ -834,6 +869,15 @@ function Vooruitblik({
           </li>
         )}
       </ul>
+
+      {f.projectedIntake != null &&
+        f.averageIntake != null &&
+        f.projectedIntake < f.averageIntake * 0.6 && (
+          <p className="note warn">
+            Deze schatting ligt ver onder je gebruikelijke dag. Waarschijnlijk staat er nog iets niet
+            in — reken er pas op als je alles hebt gelogd.
+          </p>
+        )}
 
       {f.expectedBurn == null && (
         <p className="note">
