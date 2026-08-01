@@ -5,6 +5,8 @@ export type FoodItem = {
   key: string
   name: string
   kcal: number
+  /** eiwit in gram per portie; leeg betekent onbekend, niet nul */
+  proteinG?: number
   /** hoe vaak gekozen; bepaalt de volgorde van de suggesties */
   uses: number
   lastUsed: number
@@ -17,59 +19,66 @@ export const foodKey = (name: string) => name.trim().toLowerCase().replace(/\s+/
  * Nederlandse portie — pas ze gerust aan, want de app onthoudt jouw versie
  * zodra je een item met een ander getal opslaat.
  */
-const SEED: [string, number][] = [
+const SEED: [string, number, number][] = [
   // dranken
-  ['Water', 0],
-  ['Glas rode wijn (150 ml)', 130],
-  ['Red Bull (blikje 250 ml)', 115],
-  ['Red Bull sugarfree (blikje 250 ml)', 8],
-  ['Dubbele espresso met scheutje melk', 15],
-  ['Stëlz hard iced tea (blikje 250 ml)', 70],
-  ['Stëlz iced tea 0.0 (blikje 250 ml)', 8],
-  ['Vitamin Well Reload (fles 500 ml)', 85],
-  ['Bier (glas 250 ml)', 100],
-  ['Blond bier (glas 250 ml)', 155],
-  ['Frisdrank zero (glas 250 ml)', 2],
+  ['Water', 0, 0],
+  ['Glas rode wijn (150 ml)', 130, 0],
+  ['Red Bull (blikje 250 ml)', 115, 1],
+  ['Red Bull sugarfree (blikje 250 ml)', 8, 0],
+  ['Dubbele espresso met scheutje melk', 15, 1],
+  ['Stëlz hard iced tea (blikje 250 ml)', 70, 0],
+  ['Stëlz iced tea 0.0 (blikje 250 ml)', 8, 0],
+  ['Vitamin Well Reload (fles 500 ml)', 85, 0],
+  ['Bier (glas 250 ml)', 100, 1],
+  ['Blond bier (glas 250 ml)', 155, 1],
+  ['Frisdrank zero (glas 250 ml)', 2, 0],
 
   // bolletje: circa 150 kcal brood plus 5 gram boter
-  ['Bolletje met boter en kaas', 260],
-  ['Bolletje met boter en kipfilet', 225],
-  ['Bolletje met boter en ham', 225],
-  ['Bolletje met boter en worst', 250],
-  ['Bolletje met chocopasta', 275],
-  ['Bolletje met pindakaas', 285],
-  ['Bolletje met gebakken ei', 280],
-  ['Tosti van bolletje', 330],
-  ['Kaascroissant', 300],
-  ['Belegd pistolet carpaccio', 500],
+  ['Bolletje met boter en kaas', 260, 12],
+  ['Bolletje met boter en kipfilet', 225, 13],
+  ['Bolletje met boter en ham', 225, 12],
+  ['Bolletje met boter en worst', 250, 11],
+  ['Bolletje met chocopasta', 275, 7],
+  ['Bolletje met pindakaas', 285, 11],
+  ['Bolletje met gebakken ei', 280, 13],
+  ['Tosti van bolletje', 330, 17],
+  ['Kaascroissant', 300, 9],
+  ['Belegd pistolet carpaccio', 500, 26],
 
   // sneetje brood: circa 90 kcal brood plus 5 gram boter
-  ['Sneetje met boter en kaas', 200],
-  ['Sneetje met boter en kipfilet', 165],
-  ['Sneetje met boter en ham', 165],
-  ['Sneetje met chocopasta', 215],
-  ['Sneetje met pindakaas', 225],
-  ['Sneetje met gebakken ei', 220],
-  ['Tosti (2 sneetjes)', 340],
+  ['Sneetje met boter en kaas', 200, 9],
+  ['Sneetje met boter en kipfilet', 165, 10],
+  ['Sneetje met boter en ham', 165, 9],
+  ['Sneetje met chocopasta', 215, 5],
+  ['Sneetje met pindakaas', 225, 8],
+  ['Sneetje met gebakken ei', 220, 10],
+  ['Tosti (2 sneetjes)', 340, 19],
 
   // avondeten
-  ['Avondeten kip, groente en aardappelen', 600],
-  ['Avondeten kipschnitzel, groente en aardappelen', 750],
-  ['Avondeten kip, rijst en groente', 650],
-  ['Avondeten pasta met kip', 700],
+  ['Avondeten kip, groente en aardappelen', 600, 45],
+  ['Avondeten kipschnitzel, groente en aardappelen', 750, 45],
+  ['Avondeten kip, rijst en groente', 650, 45],
+  ['Avondeten pasta met kip', 700, 42],
 
   // snacks
-  ['Handje chips', 150],
-  ['Handje snoep', 130],
-  ['Reepje chocola', 110],
-  ['Rijstwafel', 35],
-  ['Rijstwafel met kaas', 105],
-  ['Cracker', 25],
-  ['Cracker met kaas', 95],
+  ['Handje chips', 150, 2],
+  ['Handje snoep', 130, 1],
+  ['Reepje chocola', 110, 2],
+  ['Rijstwafel', 35, 1],
+  ['Rijstwafel met kaas', 105, 6],
+  ['Cracker', 25, 1],
+  ['Cracker met kaas', 95, 6],
 ]
 
 export const seedFoods = (): FoodItem[] =>
-  SEED.map(([name, kcal]) => ({ key: foodKey(name), name, kcal, uses: 0, lastUsed: 0 }))
+  SEED.map(([name, kcal, proteinG]) => ({
+    key: foodKey(name),
+    name,
+    kcal,
+    proteinG,
+    uses: 0,
+    lastUsed: 0,
+  }))
 
 /**
  * Items uit een dag opnemen in de lijst. Alleen regels met een naam én
@@ -92,6 +101,8 @@ export function learnFromDay(day: DayEntry, known: FoodItem[]): FoodItem[] {
       name,
       // je laatste invoer wint — dat is jouw portie, niet mijn schatting
       kcal: meal.kcal,
+      // eiwit alleen overschrijven als je het echt hebt ingevuld
+      proteinG: meal.proteinG ?? existing?.proteinG,
       uses: (existing?.uses ?? 0) + 1,
       lastUsed: Date.now(),
     })

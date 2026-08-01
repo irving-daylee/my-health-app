@@ -1,5 +1,13 @@
 import type { DayEntry, Profile } from '../types'
-import { burned, intakeKcal, sleepHours, weighIns, weightTrend, workoutMinutes } from './derive'
+import {
+  burned,
+  intakeKcal,
+  intakeProtein,
+  sleepHours,
+  weighIns,
+  weightTrend,
+  workoutMinutes,
+} from './derive'
 
 export type Insight = {
   tag: 'positive' | 'warning' | 'neutral'
@@ -203,6 +211,25 @@ function nutritionInsights(days: DayEntry[]): Insight[] {
               Math.max(...kcals),
             )} kcal. Grote uitschieters maken het lastig te zien of je gemiddelde klopt; een gelijkmatiger week is makkelijker te sturen.`
           : `Redelijk constant over ${s(intakeDays.length, 'gelogde dag', 'gelogde dagen')} — dat maakt de balans hierboven betrouwbaarder.`,
+    })
+  }
+
+  // eiwit is naast krachttraining de belangrijkste rem op spierverlies
+  const eiwitDagen = days.filter((d) => intakeProtein(d) > 0)
+  const gewicht = weighIns(days).slice(-1)[0]?.body.weightKg
+  if (eiwitDagen.length >= 3 && gewicht) {
+    const gemiddeld = mean(eiwitDagen.map(intakeProtein))
+    const perKg = gemiddeld / gewicht
+    const laag = perKg < 1.6
+    out.push({
+      tag: laag ? 'warning' : 'positive',
+      tagText: 'Eiwit',
+      title: `${Math.round(gemiddeld)} g per dag — ${nf(perKg, 1)} g per kilo`,
+      body: laag
+        ? `Aan de lage kant terwijl je in een tekort zit. Voor spierbehoud wordt 1,6 tot 2,2 g per kilo aangehouden; voor jou is dat ${Math.round(
+            gewicht * 1.6,
+          )} tot ${Math.round(gewicht * 2.2)} g per dag. Dit is samen met krachttraining de belangrijkste rem op spierverlies.`
+        : 'Ruim voldoende voor spierbehoud tijdens een tekort. Dit is waarschijnlijk waarom je vetvrije massa het goed houdt.',
     })
   }
 

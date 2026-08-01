@@ -61,6 +61,10 @@ export const mealKcal = (m: { qty?: number; kcal?: number }) => (m.kcal ?? 0) * 
 export const intakeKcal = (day: DayEntry) =>
   day.meals.reduce((sum, m) => sum + mealKcal(m), 0)
 
+/** Eiwit telt net als calorieën per portie maal aantal. */
+export const intakeProtein = (day: DayEntry) =>
+  day.meals.reduce((sum, m) => sum + (m.proteinG ?? 0) * (m.qty ?? 1), 0)
+
 export const burned = (day: DayEntry) => (day.restingKcal ?? 0) + (day.activeKcal ?? 0)
 
 /**

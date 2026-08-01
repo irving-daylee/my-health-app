@@ -1283,3 +1283,23 @@ textarea {
   padding: 7px 8px;
   font-weight: 600;
 }
+
+.meal-total strong em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--grey-600);
+  margin-top: 2px;
+}
+
+.food-protein {
+  width: 52px;
+  flex: none;
+  text-align: right;
+  border: 1px solid var(--grey-200);
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 13px;
+  color: var(--grey-600);
+}

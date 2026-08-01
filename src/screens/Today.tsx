@@ -13,6 +13,7 @@ import {
   estimatedBmr,
   fmt,
   intakeKcal,
+  intakeProtein,
   mealKcal,
   nl,
   signed,
@@ -164,6 +165,13 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
             onChange={(v) => patchBody({ waterMassKg: v })}
           />
           <NumberField
+            label="Eiwitpercentage"
+            unit="%"
+            step={0.1}
+            value={day.body.proteinPct}
+            onChange={(v) => patchBody({ proteinPct: v })}
+          />
+          <NumberField
             label="Vetmassa"
             unit="kg"
             step={0.1}
@@ -219,6 +227,15 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
                 <div className="k">Vetvrije massa</div>
                 <div className="v">
                   {nl(day.body.weightKg - day.body.fatMassKg, 1)}
+                  <small>kg</small>
+                </div>
+              </div>
+            )}
+            {day.body.proteinPct != null && (
+              <div className="stat">
+                <div className="k">Eiwitmassa</div>
+                <div className="v">
+                  {nl((day.body.weightKg * day.body.proteinPct) / 100, 1)}
                   <small>kg</small>
                 </div>
               </div>
@@ -391,6 +408,7 @@ function FoodCard({
 
   const doel = profile.calorieGoalKcal
   const totaal = intakeKcal(day)
+  const eiwit = Math.round(intakeProtein(day))
   const pct = doel > 0 ? Math.round((totaal / doel) * 100) : 0
   const setMeals = (meals: Meal[]) => onSave({ ...day, meals })
 
@@ -415,7 +433,9 @@ function FoodCard({
             onOpen={() => setOpenFor(m.id)}
             onClose={() => setOpenFor(null)}
             onChange={(name) => update(m.id, { name })}
-            onPick={(item) => update(m.id, { name: item.name, kcal: item.kcal })}
+            onPick={(item) =>
+              update(m.id, { name: item.name, kcal: item.kcal, proteinG: item.proteinG })
+            }
             onSettled={leer}
           />
           <div className="meal-calc">
@@ -456,7 +476,10 @@ function FoodCard({
       {day.meals.length > 0 && (
         <div className="meal-total">
           <span>Totaal</span>
-          <strong>{intakeKcal(day).toLocaleString('nl-NL')} kcal</strong>
+          <strong>
+            {intakeKcal(day).toLocaleString('nl-NL')} kcal
+            {eiwit > 0 && <em>{eiwit} g eiwit</em>}
+          </strong>
         </div>
       )}
 

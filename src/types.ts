@@ -7,6 +7,8 @@ export type Meal = {
   qty?: number
   /** geschatte calorieën per portie — een ruwe inschatting is genoeg voor de trend */
   kcal?: number
+  /** eiwit in gram per portie; komt meestal uit je itemlijst */
+  proteinG?: number
 }
 
 export type Sleep = {
@@ -21,6 +23,8 @@ export type Body = {
   bodyFatPct?: number
   waterPct?: number
   waterMassKg?: number
+  /** eiwitpercentage uit de weegschaal — deel van je lichaamsgewicht, geen voeding */
+  proteinPct?: number
   fatMassKg?: number
   muscleMassKg?: number
   boneMassKg?: number

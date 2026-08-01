@@ -335,8 +335,8 @@ function FoodsCard() {
   return (
     <Card title={`Mijn items (${foods.length})`}>
       <p className="note" style={{ marginBottom: 12 }}>
-        Alles wat je met een naam en calorieën opslaat komt hier vanzelf in. Namen en waarden kun je
-        aanpassen; typefouten gooi je eruit met het kruisje.
+        Alles wat je met een naam en calorieën opslaat komt hier vanzelf in. De twee velden zijn
+        calorieën en eiwit in gram; eiwit mag leeg blijven. Typefouten gooi je eruit met het kruisje.
       </p>
 
       <div className="field">
@@ -362,8 +362,21 @@ function FoodsCard() {
               className="food-kcal"
               type="text"
               inputMode="numeric"
+              aria-label="calorieën"
               value={f.kcal}
               onChange={(e) => bewerk(f.key, { kcal: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+            />
+            <input
+              className="food-protein"
+              type="text"
+              inputMode="numeric"
+              aria-label="eiwit in gram"
+              placeholder="g"
+              value={f.proteinG ?? ''}
+              onChange={(e) => {
+                const cijfers = e.target.value.replace(/\D/g, '')
+                bewerk(f.key, { proteinG: cijfers === '' ? undefined : Number(cijfers) })
+              }}
             />
             <button className="remove" aria-label={`${f.name} verwijderen`} onClick={() => wis(f.key)}>
               ×

@@ -18,7 +18,7 @@ export function claudeSummary(days: DayEntry[], profile: Profile): string {
   lines.push(`Periode: ${scoped[0]?.date ?? '—'} t/m ${scoped[scoped.length - 1]?.date ?? '—'}.`)
   lines.push('')
   lines.push(
-    'Kolommen: datum | gewicht kg | vet% | vetmassa kg | watergewicht kg | spiermassa kg | ' +
+    'Kolommen: datum | gewicht kg | vet% | vetmassa kg | watergewicht kg | eiwit% | spiermassa kg | ' +
       'verbrand kcal | gegeten kcal | balans kcal | water ml | slaap uur | context',
   )
   lines.push('')
@@ -47,6 +47,7 @@ export function claudeSummary(days: DayEntry[], profile: Profile): string {
         cell(b.bodyFatPct),
         cell(b.fatMassKg),
         cell(b.waterMassKg),
+        cell(b.proteinPct),
         cell(b.muscleMassKg),
         out || '-',
         inn || '-',
