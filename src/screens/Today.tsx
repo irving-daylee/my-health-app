@@ -443,16 +443,13 @@ function FoodCard({
           <div className="meal-calc">
             <label className="meal-time">
               <span>tijd</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="--:--"
-                value={m.time ?? ''}
-                onChange={(e) => update(m.id, { time: e.target.value || undefined })}
-                onBlur={leer}
+              <TimeCell
+                value={m.time}
+                onChange={(time) => update(m.id, { time })}
+                onSettled={leer}
               />
             </label>
-            <label>
+            <label className="meal-qty">
               <span>aantal</span>
               <input
                 type="text"
@@ -463,8 +460,8 @@ function FoodCard({
               />
             </label>
             <span className="meal-op">×</span>
-            <label>
-              <span>kcal per stuk</span>
+            <label className="meal-kcal">
+              <span>kcal</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -893,5 +890,51 @@ function Vooruitblik({
         </p>
       )}
     </div>
+  )
+}
+
+
+/**
+ * Tijdinvoer binnen een regel: 8, 800 en 08:00 leveren allemaal 08:00 op. Tijdens
+ * het typen blijft staan wat je intikt; pas als je het veld verlaat wordt het
+ * netjes gezet.
+ */
+function TimeCell({
+  value,
+  onChange,
+  onSettled,
+}: {
+  value: string | undefined
+  onChange: (v: string | undefined) => void
+  onSettled: () => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const normaliseer = (raw: string): string | undefined => {
+    const c = raw.replace(/\D/g, '')
+    if (!c) return undefined
+    const uur = c.length <= 2 ? Number(c) : Number(c.slice(0, c.length - 2))
+    const min = c.length <= 2 ? 0 : Number(c.slice(-2))
+    if (uur > 23 || min > 59) return undefined
+    return `${String(uur).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      placeholder="--:--"
+      value={draft ?? value ?? ''}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^\d:]/g, '')
+        setDraft(raw)
+        onChange(normaliseer(raw))
+      }}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={() => {
+        setDraft(null)
+        onSettled()
+      }}
+    />
   )
 }

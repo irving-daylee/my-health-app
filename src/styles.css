@@ -460,13 +460,23 @@ textarea {
   min-width: 0;
 }
 
-.meal-calc label:first-of-type {
-  width: 62px;
+/* Vaste, smalle kolommen voor tijd en aantal; kcal krijgt de rest. */
+.meal-calc label.meal-time {
+  width: 60px;
   flex: none;
 }
 
-.meal-calc label:last-of-type {
+.meal-calc label.meal-qty {
+  width: 46px;
+  flex: none;
+}
+
+.meal-calc label.meal-kcal {
   flex: 1;
+}
+
+.meal-calc label.meal-qty input {
+  text-align: center;
 }
 
 .meal-calc span {
@@ -1302,11 +1312,6 @@ textarea {
   padding: 7px 8px;
   font-size: 13px;
   color: var(--grey-600);
-}
-
-/* Tijdstip staat vooraan in de rekenregel en is smaller dan de rest. */
-.meal-calc label.meal-time {
-  max-width: 62px;
 }
 
 .meal-calc label.meal-time input {
