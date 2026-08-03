@@ -200,3 +200,31 @@ export const nowTime = () => {
   const d = new Date()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
+
+/**
+ * Alles wat uit je weegschaalgegevens af te leiden is. Een percentage en de
+ * bijbehorende massa zijn twee kanten van dezelfde meting, dus als je er één
+ * invult kennen we de ander ook — zo hoef je alleen over te typen wat Fitdays
+ * je toont.
+ */
+export function derivedBody(body: DayEntry['body'], profile: Profile) {
+  const w = body.weightKg
+  if (w == null || w <= 0) return null
+
+  const paar = (pct: number | undefined, kg: number | undefined) => ({
+    pct: pct ?? (kg != null ? (kg / w) * 100 : undefined),
+    kg: kg ?? (pct != null ? (w * pct) / 100 : undefined),
+    afgeleid: pct == null || kg == null,
+  })
+
+  const vet = paar(body.bodyFatPct, body.fatMassKg)
+  const vocht = paar(body.waterPct, body.waterMassKg)
+  const eiwit = paar(body.proteinPct, undefined)
+
+  const vetvrij = vet.kg != null ? w - vet.kg : undefined
+  // Vetvrije massa afgezet tegen je lengte, net als BMI maar dan zonder het vet
+  // mee te tellen. Dit is het getal dat laat zien of je spiermassa vasthoudt.
+  const ffmi = vetvrij != null ? vetvrij / (profile.heightM * profile.heightM) : undefined
+
+  return { vet, vocht, eiwit, vetvrij, ffmi, bmi: bmi(profile, w) }
+}

@@ -65,6 +65,7 @@ export type Context = {
   alcohol?: boolean
   ill?: boolean
   travel?: boolean
+  football?: boolean
   stress?: 1 | 2 | 3 | 4 | 5
   notes?: string
 }

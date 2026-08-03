@@ -1317,3 +1317,18 @@ textarea {
 .meal-calc label.meal-time input {
   text-align: center;
 }
+
+/* Zelf een hoeveelheid water optellen, naast de vaste knop. */
+.water-add {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.water-add input {
+  width: 74px;
+  border: 1px solid var(--grey-200);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}

@@ -7,9 +7,9 @@ import { forecast } from '../lib/forecast'
 import { Card, NumberField, Scale, TimeField, Toggle } from '../components/inputs'
 import {
   balance,
-  bmi,
   burned,
   dayDelta,
+  derivedBody,
   estimatedBmr,
   fmt,
   intakeKcal,
@@ -46,13 +46,14 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
     day.body.weightKg != null ? day.body.weightKg - profile.targetWeightKg : null
   const bmr = day.body.weightKg ? estimatedBmr(profile, day.body.weightKg, day.date) : null
   const gewichtWaarschuwing = weightWarning(days, day.date, day.body.weightKg)
+  const afgeleid = derivedBody(day.body, profile)
 
   return (
     <>
       <section className="hero">
         <div className="label">Gewicht</div>
         <div className="value">
-          {day.body.weightKg != null ? nl(day.body.weightKg, 1) : '—'}
+          {day.body.weightKg != null ? nl(day.body.weightKg, 2) : '—'}
           <small>kg</small>
         </div>
         <div className="meta">
@@ -218,31 +219,64 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
           Alleen nuchtere ochtendwegingen tellen mee in de trend. Zet dit uit bij een avondweging —
           die vervuilt je gemiddelde.
         </p>
-        {day.body.weightKg != null && (
-          <div className="grid" style={{ marginTop: 12 }}>
-            <div className="stat">
-              <div className="k">BMI</div>
-              <div className="v">{nl(bmi(profile, day.body.weightKg), 1)}</div>
+        {afgeleid && (
+          <>
+            <div className="grid" style={{ marginTop: 12 }}>
+              <div className="stat">
+                <div className="k">BMI</div>
+                <div className="v">{nl(afgeleid.bmi, 1)}</div>
+              </div>
+              {afgeleid.vetvrij != null && (
+                <div className="stat">
+                  <div className="k">Vetvrije massa</div>
+                  <div className="v">
+                    {nl(afgeleid.vetvrij, 1)}
+                    <small>kg</small>
+                  </div>
+                </div>
+              )}
+              {afgeleid.ffmi != null && (
+                <div className="stat">
+                  <div className="k">FFMI</div>
+                  <div className="v">{nl(afgeleid.ffmi, 1)}</div>
+                </div>
+              )}
+              {afgeleid.eiwit.kg != null && (
+                <div className="stat">
+                  <div className="k">Eiwitmassa</div>
+                  <div className="v">
+                    {nl(afgeleid.eiwit.kg, 1)}
+                    <small>kg</small>
+                  </div>
+                </div>
+              )}
+              {afgeleid.vet.afgeleid && afgeleid.vet.kg != null && afgeleid.vet.pct != null && (
+                <div className="stat">
+                  <div className="k">Vet {day.body.fatMassKg == null ? '(kg)' : '(%)'}</div>
+                  <div className="v">
+                    {day.body.fatMassKg == null ? nl(afgeleid.vet.kg, 1) : nl(afgeleid.vet.pct, 1)}
+                    <small>{day.body.fatMassKg == null ? 'kg' : '%'}</small>
+                  </div>
+                </div>
+              )}
+              {afgeleid.vocht.afgeleid && afgeleid.vocht.kg != null && afgeleid.vocht.pct != null && (
+                <div className="stat">
+                  <div className="k">Vocht {day.body.waterMassKg == null ? '(kg)' : '(%)'}</div>
+                  <div className="v">
+                    {day.body.waterMassKg == null
+                      ? nl(afgeleid.vocht.kg, 1)
+                      : nl(afgeleid.vocht.pct, 1)}
+                    <small>{day.body.waterMassKg == null ? 'kg' : '%'}</small>
+                  </div>
+                </div>
+              )}
             </div>
-            {day.body.fatMassKg != null && (
-              <div className="stat">
-                <div className="k">Vetvrije massa</div>
-                <div className="v">
-                  {nl(day.body.weightKg - day.body.fatMassKg, 1)}
-                  <small>kg</small>
-                </div>
-              </div>
-            )}
-            {day.body.proteinPct != null && (
-              <div className="stat">
-                <div className="k">Eiwitmassa</div>
-                <div className="v">
-                  {nl((day.body.weightKg * day.body.proteinPct) / 100, 1)}
-                  <small>kg</small>
-                </div>
-              </div>
-            )}
-          </div>
+            <p className="note" style={{ marginTop: 8 }}>
+              Deze waarden rekent de app zelf uit; je hoeft alleen over te typen wat Fitdays je
+              toont. FFMI is je vetvrije massa gedeeld door je lengte in het kwadraat — BMI zonder
+              het vet mee te tellen, en daarmee het getal dat laat zien of je spiermassa vasthoudt.
+            </p>
+          </>
         )}
       </Card>
 
@@ -261,15 +295,13 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
           </div>
         </div>
         <div className="row" style={{ marginTop: 10 }}>
-          {[250, 500, 750].map((n) => (
-            <button
-              key={n}
-              className="btn secondary"
-              onClick={() => patch({ waterMl: (day.waterMl ?? 0) + n })}
-            >
-              +{n} ml
-            </button>
-          ))}
+          <button
+            className="btn secondary"
+            onClick={() => patch({ waterMl: (day.waterMl ?? 0) + 550 })}
+          >
+            +550 ml
+          </button>
+          <WaterAdd onAdd={(n) => patch({ waterMl: (day.waterMl ?? 0) + n })} />
         </div>
         <p className="note" style={{ marginTop: 10 }}>
           {day.waterMl != null
@@ -290,14 +322,6 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
             value={day.sleep.wake}
             onChange={(v) => patch({ sleep: { ...day.sleep, wake: v } })}
           />
-          <NumberField
-            label="Uren totaal"
-            unit="uur"
-            step={0.25}
-            placeholder="auto"
-            value={day.sleep.hours}
-            onChange={(v) => patch({ sleep: { ...day.sleep, hours: v } })}
-          />
         </div>
         <div style={{ marginTop: 12 }}>
           <Scale
@@ -307,7 +331,8 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
           />
         </div>
         <p className="note" style={{ marginTop: 8 }}>
-          Berekend: {fmt(sleepHours(day) ?? null, 1, 'uur')}. Bedtijd en opstaan invullen geeft je
+          Slaapduur: {fmt(sleepHours(day) ?? null, 1, 'uur')} — berekend uit je bedtijd en het
+          tijdstip waarop je opstond. Bedtijd en opstaan invullen geeft je
           ook je regelmaat — die hangt sterker samen met gewicht dan de duur alleen.
         </p>
       </Card>
@@ -336,6 +361,11 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
             label="Reisdag"
             on={!!day.context.travel}
             onChange={(v) => patch({ context: { ...day.context, travel: v } })}
+          />
+          <Toggle
+            label="Voetbal"
+            on={!!day.context.football}
+            onChange={(v) => patch({ context: { ...day.context, football: v } })}
           />
         </div>
         <div style={{ marginTop: 12 }}>
@@ -936,5 +966,40 @@ function TimeCell({
         onSettled()
       }}
     />
+  )
+}
+
+
+/** Eigen hoeveelheid water optellen, naast de vaste knop. */
+function WaterAdd({ onAdd }: { onAdd: (ml: number) => void }) {
+  const [waarde, setWaarde] = useState('')
+  const ml = Number(waarde.replace(/\D/g, ''))
+
+  return (
+    <span className="water-add">
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder="ml"
+        value={waarde}
+        onChange={(e) => setWaarde(e.target.value.replace(/\D/g, ''))}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && ml > 0) {
+            onAdd(ml)
+            setWaarde('')
+          }
+        }}
+      />
+      <button
+        className="btn secondary"
+        disabled={!ml}
+        onClick={() => {
+          onAdd(ml)
+          setWaarde('')
+        }}
+      >
+        Optellen
+      </button>
+    </span>
   )
 }
