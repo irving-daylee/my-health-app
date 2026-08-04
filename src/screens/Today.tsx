@@ -12,9 +12,11 @@ import {
   derivedBody,
   estimatedBmr,
   fmt,
+  formatDate,
   intakeKcal,
   intakeProtein,
   mealKcal,
+  minutesOfDay,
   nowTime,
   nl,
   signed,
@@ -32,9 +34,10 @@ type Props = {
   profile: Profile
   onSave: (d: DayEntry) => void
   onFoodsChanged: () => void
+  onDelete: () => void
 }
 
-export default function Today({ day, days, profile, onSave, onFoodsChanged }: Props) {
+export default function Today({ day, days, profile, onSave, onFoodsChanged, onDelete }: Props) {
   const patch = (p: Partial<DayEntry>) => onSave({ ...day, ...p })
   const patchBody = (p: Partial<Body>) => onSave({ ...day, body: { ...day.body, ...p } })
 
@@ -63,7 +66,7 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
           </div>
           <div>
             t.o.v. vorige weging
-            <strong>{signed(dDelta, 1, 'kg')}</strong>
+            <strong>{signed(dDelta, 2, 'kg')}</strong>
           </div>
           <div>
             tot streefgewicht
@@ -390,6 +393,21 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged }: Pr
           nog terug op de weegschaal — zonder deze vinkjes lijkt dat een onverklaarbare piek.
         </p>
       </Card>
+
+      <Card title="Deze dag">
+        <p className="note" style={{ marginBottom: 12 }}>
+          Verwijdert alles wat je op {formatDate(day.date)} hebt ingevuld, ook op je andere
+          apparaten. Dit is niet terug te draaien.
+        </p>
+        <button
+          className="btn danger"
+          onClick={() => {
+            if (confirm(`Alles van ${formatDate(day.date)} verwijderen?`)) onDelete()
+          }}
+        >
+          Dag wissen
+        </button>
+      </Card>
     </>
   )
 }
@@ -414,6 +432,7 @@ function FoodCard({
   // Welke regel zijn suggesties toont. Deze status hoort hier en niet in het
   // veld zelf: dan kan een herberekening van de lijst hem niet dichttrekken.
   const [openFor, setOpenFor] = useState<string | null>(null)
+  const [sortering, setSortering] = useState<SortKey>('tijd')
 
   useEffect(() => {
     void allFoods().then(setFoods)
@@ -456,7 +475,23 @@ function FoodCard({
     <Card title="Eten en drinken">
       {day.meals.length === 0 && <p className="empty">Nog niets gelogd voor deze dag.</p>}
 
-      {day.meals.map((m) => (
+      {day.meals.length > 1 && (
+        <div className="sort-row">
+          <label htmlFor="meal-sort">Sorteren op</label>
+          <select
+            id="meal-sort"
+            value={sortering}
+            onChange={(e) => setSortering(e.target.value as SortKey)}
+          >
+            <option value="tijd">Tijd</option>
+            <option value="aantal">Aantal</option>
+            <option value="kcal">Kcal per stuk</option>
+            <option value="totaal">Kcal totaal</option>
+          </select>
+        </div>
+      )}
+
+      {sorteer(day.meals, sortering).map((m) => (
         <div className="meal-row" key={m.id}>
           <NameField
             value={m.name}
@@ -1002,4 +1037,32 @@ function WaterAdd({ onAdd }: { onAdd: (ml: number) => void }) {
       </button>
     </span>
   )
+}
+
+
+/* ---------------- sorteren van je items ---------------- */
+
+type SortKey = 'tijd' | 'aantal' | 'kcal' | 'totaal'
+
+/**
+ * Alleen de weergave verandert; de opgeslagen volgorde blijft zoals je hem
+ * invoerde. Regels zonder tijdstip zakken naar onderen, want die horen nergens
+ * in je dag thuis.
+ */
+function sorteer(meals: Meal[], key: SortKey): Meal[] {
+  const kopie = [...meals]
+  if (key === 'tijd') {
+    return kopie.sort((a, b) => {
+      const ta = minutesOfDay(a.time)
+      const tb = minutesOfDay(b.time)
+      if (ta == null && tb == null) return 0
+      if (ta == null) return 1
+      if (tb == null) return -1
+      return ta - tb
+    })
+  }
+  // bij getallen het grootste eerst: daar kijk je naar als je sorteert
+  const waarde = (m: Meal) =>
+    key === 'aantal' ? (m.qty ?? 1) : key === 'kcal' ? (m.kcal ?? 0) : mealKcal(m)
+  return kopie.sort((a, b) => waarde(b) - waarde(a))
 }

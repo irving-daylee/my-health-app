@@ -154,7 +154,8 @@ export default function SettingsScreen({
           <NumberField
             label="Streefgewicht"
             unit="kg"
-            step={0.1}
+            step={0.01}
+            decimals={2}
             value={profile.targetWeightKg}
             onChange={(v) => v && onProfile({ ...profile, targetWeightKg: v })}
           />

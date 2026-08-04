@@ -21,10 +21,21 @@ export function NumberField(props: {
   step?: number
   unit?: string
   placeholder?: string
+  /** vaste hoeveelheid decimalen in de weergave; tijdens typen blijft je invoer staan */
+  decimals?: number
 }) {
   const [draft, setDraft] = useState<string | null>(null)
 
-  const shown = draft ?? (props.value == null ? '' : String(props.value).replace('.', ','))
+  const shown =
+    draft ??
+    (props.value == null
+      ? ''
+      : props.decimals != null
+        ? props.value.toLocaleString('nl-NL', {
+            minimumFractionDigits: props.decimals,
+            maximumFractionDigits: props.decimals,
+          })
+        : String(props.value).replace('.', ','))
 
   const handle = (raw: string) => {
     // cijfers, één scheidingsteken, optioneel minteken vooraan

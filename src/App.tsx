@@ -38,7 +38,7 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const applyRemote = useCallback((nextDays: DayEntry[], nextProfile: Profile) => {
-    setDays(nextDays)
+    setDays(nextDays.filter((d) => !d.deleted))
     setProfile(nextProfile)
   }, [])
 
@@ -57,7 +57,7 @@ export default function App() {
     // site-opslag.
     Promise.all([allDays(), getProfile(), getSettings()])
       .then(([d, p, s]) => {
-        setDays(d)
+        setDays(d.filter((x) => !x.deleted))
         setProfile(p)
         setSettings(s)
         setUnlocked(!s.pinHash)
@@ -68,7 +68,22 @@ export default function App() {
       .finally(() => setReady(true))
   }, [])
 
-  const reload = useCallback(async () => setDays(await allDays()), [])
+  const reload = useCallback(
+    async () => setDays((await allDays()).filter((d) => !d.deleted)),
+    [],
+  )
+
+  const removeDay = useCallback(
+    async (target: ISODate) => {
+      const bestaand = days.find((d) => d.date === target)
+      if (!bestaand) return
+      const grafsteen: DayEntry = { ...emptyDay(target), deleted: true, updatedAt: Date.now() }
+      setDays((prev) => prev.filter((d) => d.date !== target))
+      await putDay(grafsteen)
+      void syncDay(grafsteen)
+    },
+    [days, syncDay],
+  )
 
   const day = useMemo(() => days.find((d) => d.date === date) ?? emptyDay(date), [days, date])
 
@@ -200,6 +215,7 @@ export default function App() {
             profile={profile}
             onSave={saveDay}
             onFoodsChanged={syncFoods}
+            onDelete={() => void removeDay(date)}
           />
         )}
         {tab === 'trends' && <Trends days={days} profile={profile} />}

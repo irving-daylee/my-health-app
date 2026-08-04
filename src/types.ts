@@ -82,6 +82,12 @@ export type DayEntry = {
   meals: Meal[]
   workouts: Workout[]
   context: Context
+  /**
+   * Verwijderd. Blijft als grafsteen bestaan zodat het wissen ook je andere
+   * apparaten bereikt: een dag die simpelweg verdwijnt zou daar als 'nieuw'
+   * worden teruggeduwd.
+   */
+  deleted?: boolean
   updatedAt: number
 }
 

@@ -64,6 +64,7 @@ export const putDayRaw = (day: DayEntry) => tx(DAYS, 'readwrite', (s) => s.put(d
 
 export const deleteDay = (date: ISODate) => tx(DAYS, 'readwrite', (s) => s.delete(date))
 
+/** Dagen inclusief grafstenen — voor sync. Voor weergave: filter op `deleted`. */
 export async function allDays(): Promise<DayEntry[]> {
   const days = await tx<DayEntry[]>(DAYS, 'readonly', (s) => s.getAll())
   return days
