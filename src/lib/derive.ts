@@ -190,6 +190,29 @@ export function minutesOfDay(time: string | undefined): number | null {
   return u > 23 || min > 59 ? null : u * 60 + min
 }
 
+export type Dagdeel = 'ochtend' | 'middag' | 'avond'
+
+export const DAGDEEL_LABELS: Record<Dagdeel, string> = {
+  ochtend: 'Ochtend',
+  middag: 'Middag',
+  avond: 'Avond',
+}
+
+/**
+ * Het dagdeel volgt uit het tijdstip dat je al invult — een apart labelveld zou
+ * je hetzelfde twee keer laten opgeven. Zonder tijd is er dus ook geen dagdeel.
+ *
+ * De avond loopt door tot vier uur 's nachts: een biertje om half een hoort bij
+ * de avond ervoor, niet bij de ochtend erna.
+ */
+export function dagdeel(time: string | undefined): Dagdeel | null {
+  const m = minutesOfDay(time)
+  if (m == null) return null
+  if (m >= 4 * 60 && m < 12 * 60) return 'ochtend'
+  if (m < 17 * 60 + 30 && m >= 12 * 60) return 'middag'
+  return 'avond'
+}
+
 /** Het laatste tijdstip waarop je die dag iets at of dronk. */
 export function lastMealMinutes(day: DayEntry): number | null {
   const tijden = day.meals.map((m) => minutesOfDay(m.time)).filter((x): x is number => x != null)

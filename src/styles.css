@@ -1334,6 +1334,33 @@ textarea {
 }
 
 /* Sorteerkeuze boven je items. */
+.deel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.deel-row .chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* het kcal-getal hoort bij het label, maar mag de knop niet gaan domineren */
+.deel-row .chip em {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.meal-total.subtotal {
+  color: var(--grey-600);
+  font-size: 13px;
+  border-top: none;
+}
+
 .sort-row {
   display: flex;
   align-items: center;

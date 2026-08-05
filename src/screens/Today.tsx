@@ -8,6 +8,9 @@ import { Card, NumberField, Scale, TimeField, Toggle } from '../components/input
 import {
   balance,
   burned,
+  dagdeel,
+  DAGDEEL_LABELS,
+  type Dagdeel,
   dayDelta,
   derivedBody,
   estimatedBmr,
@@ -433,6 +436,7 @@ function FoodCard({
   // veld zelf: dan kan een herberekening van de lijst hem niet dichttrekken.
   const [openFor, setOpenFor] = useState<string | null>(null)
   const [sortering, setSortering] = useState<SortKey>('tijd')
+  const [deel, setDeel] = useState<Dagdeel | 'alles'>('alles')
 
   useEffect(() => {
     void allFoods().then(setFoods)
@@ -471,27 +475,69 @@ function FoodCard({
     return cleaned === '' ? undefined : Number(cleaned)
   }
 
+  // Per dagdeel tellen we vooraf, zodat de knoppen meteen laten zien waar je
+  // calorieën zitten — dat is de vraag achter het filteren.
+  const perDeel = (['ochtend', 'middag', 'avond'] as Dagdeel[]).map((d) => {
+    const items = day.meals.filter((m) => dagdeel(m.time) === d)
+    return { deel: d, items, kcal: items.reduce((s, m) => s + mealKcal(m), 0) }
+  })
+  const zonderTijd = day.meals.filter((m) => dagdeel(m.time) === null)
+  const getoond = deel === 'alles' ? day.meals : day.meals.filter((m) => dagdeel(m.time) === deel)
+
   return (
     <Card title="Eten en drinken">
       {day.meals.length === 0 && <p className="empty">Nog niets gelogd voor deze dag.</p>}
 
       {day.meals.length > 1 && (
-        <div className="sort-row">
-          <label htmlFor="meal-sort">Sorteren op</label>
-          <select
-            id="meal-sort"
-            value={sortering}
-            onChange={(e) => setSortering(e.target.value as SortKey)}
-          >
-            <option value="tijd">Tijd</option>
-            <option value="aantal">Aantal</option>
-            <option value="kcal">Kcal per stuk</option>
-            <option value="totaal">Kcal totaal</option>
-          </select>
-        </div>
+        <>
+          <div className="deel-row">
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={deel === 'alles'}
+              onClick={() => setDeel('alles')}
+            >
+              Alles <em>{day.meals.length}</em>
+            </button>
+            {perDeel
+              .filter((d) => d.items.length > 0)
+              .map((d) => (
+                <button
+                  key={d.deel}
+                  type="button"
+                  className="chip"
+                  aria-pressed={deel === d.deel}
+                  onClick={() => setDeel(deel === d.deel ? 'alles' : d.deel)}
+                >
+                  {DAGDEEL_LABELS[d.deel]} <em>{d.kcal.toLocaleString('nl-NL')} kcal</em>
+                </button>
+              ))}
+          </div>
+
+          <div className="sort-row">
+            <label htmlFor="meal-sort">Sorteren op</label>
+            <select
+              id="meal-sort"
+              value={sortering}
+              onChange={(e) => setSortering(e.target.value as SortKey)}
+            >
+              <option value="tijd">Tijd</option>
+              <option value="aantal">Aantal</option>
+              <option value="kcal">Kcal per stuk</option>
+              <option value="totaal">Kcal totaal</option>
+            </select>
+          </div>
+        </>
       )}
 
-      {sorteer(day.meals, sortering).map((m) => (
+      {deel !== 'alles' && zonderTijd.length > 0 && (
+        <p className="note" style={{ marginBottom: 10 }}>
+          {zonderTijd.length} {zonderTijd.length === 1 ? 'item heeft' : 'items hebben'} geen tijd en
+          valt daardoor buiten dit filter. Vul de tijd in om het mee te laten tellen.
+        </p>
+      )}
+
+      {sorteer(getoond, sortering).map((m) => (
         <div className="meal-row" key={m.id}>
           <NameField
             value={m.name}
@@ -547,6 +593,13 @@ function FoodCard({
           </div>
         </div>
       ))}
+
+      {deel !== 'alles' && (
+        <div className="meal-total subtotal">
+          <span>{DAGDEEL_LABELS[deel]}</span>
+          <strong>{getoond.reduce((s, m) => s + mealKcal(m), 0).toLocaleString('nl-NL')} kcal</strong>
+        </div>
+      )}
 
       {day.meals.length > 0 && (
         <div className="meal-total">
@@ -1052,9 +1105,15 @@ type SortKey = 'tijd' | 'aantal' | 'kcal' | 'totaal'
 function sorteer(meals: Meal[], key: SortKey): Meal[] {
   const kopie = [...meals]
   if (key === 'tijd') {
+    // Na middernacht hoort achteraan, niet vooraan: een biertje om kwart voor
+    // een sluit je dag af. Dezelfde grens als bij het dagdeel.
+    const opDagvolgorde = (m: Meal) => {
+      const t = minutesOfDay(m.time)
+      return t == null ? null : t < 4 * 60 ? t + 24 * 60 : t
+    }
     return kopie.sort((a, b) => {
-      const ta = minutesOfDay(a.time)
-      const tb = minutesOfDay(b.time)
+      const ta = opDagvolgorde(a)
+      const tb = opDagvolgorde(b)
       if (ta == null && tb == null) return 0
       if (ta == null) return 1
       if (tb == null) return -1
