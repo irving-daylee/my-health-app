@@ -93,12 +93,47 @@ export async function exportAll() {
   return { version: 1, exportedAt: new Date().toISOString(), profile, days }
 }
 
+/**
+ * Voegt een binnenkomende dag samen met wat er al staat. Een import bevat vaak
+ * maar een stukje van de dag — bijvoorbeeld alleen een weging — en mag de rest
+ * van die dag niet wissen. Ingevulde waardes uit het bestand winnen, alles wat
+ * daar ontbreekt blijft staan. Maaltijden en trainingen worden op `id`
+ * samengevoegd, zodat dezelfde regel niet dubbel verschijnt.
+ */
+export function mergeDay(mine: DayEntry | undefined, incoming: DayEntry): DayEntry {
+  if (!mine) return incoming
+  const defined = <T extends object>(o: T): Partial<T> =>
+    Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>
+  const byId = <T extends { id: string }>(a: T[], b: T[]) => {
+    const map = new Map(a.map((x) => [x.id, x]))
+    for (const x of b) map.set(x.id, x)
+    return [...map.values()]
+  }
+  return {
+    ...mine,
+    ...defined(incoming),
+    sleep: { ...mine.sleep, ...defined(incoming.sleep) },
+    body: { ...mine.body, ...defined(incoming.body) },
+    context: { ...mine.context, ...defined(incoming.context) },
+    meals: byId(mine.meals, incoming.meals),
+    workouts: byId(mine.workouts, incoming.workouts),
+    // Een import op een gewiste dag brengt hem terug: er staat weer iets in.
+    deleted: incoming.deleted,
+    // Het resultaat is nieuwer dan beide bronnen, anders duwt sync de oude
+    // serverversie er zo overheen.
+    updatedAt: Date.now(),
+  }
+}
+
 export async function importAll(payload: unknown) {
   const data = payload as { profile?: Profile; days?: DayEntry[] }
   if (!data || !Array.isArray(data.days)) throw new Error('Onbekend bestandsformaat')
   if (data.profile) await putProfile({ ...defaultProfile, ...data.profile })
   for (const day of data.days) {
-    if (typeof day?.date === 'string') await putDayRaw(normalizeDay(day))
+    if (typeof day?.date !== 'string') continue
+    const incoming = normalizeDay(day)
+    const mine = await getDay(incoming.date)
+    await putDayRaw(mergeDay(mine ? normalizeDay(mine) : undefined, incoming))
   }
   return data.days.length
 }
