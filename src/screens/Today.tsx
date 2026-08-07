@@ -153,32 +153,11 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged, onDe
             onChange={(v) => patchBody({ weightKg: v })}
           />
           <NumberField
-            label="Vetpercentage"
+            label="Lichaamsvet"
             unit="%"
             step={0.1}
             value={day.body.bodyFatPct}
             onChange={(v) => patchBody({ bodyFatPct: v })}
-          />
-          <NumberField
-            label="Vochtpercentage"
-            unit="%"
-            step={0.1}
-            value={day.body.waterPct}
-            onChange={(v) => patchBody({ waterPct: v })}
-          />
-          <NumberField
-            label="Watergewicht"
-            unit="kg"
-            step={0.1}
-            value={day.body.waterMassKg}
-            onChange={(v) => patchBody({ waterMassKg: v })}
-          />
-          <NumberField
-            label="Eiwitpercentage"
-            unit="%"
-            step={0.1}
-            value={day.body.proteinPct}
-            onChange={(v) => patchBody({ proteinPct: v })}
           />
           <NumberField
             label="Vetmassa"
@@ -200,6 +179,27 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged, onDe
             step={0.1}
             value={day.body.boneMassKg}
             onChange={(v) => patchBody({ boneMassKg: v })}
+          />
+          <NumberField
+            label="Eiwit"
+            unit="%"
+            step={0.1}
+            value={day.body.proteinPct}
+            onChange={(v) => patchBody({ proteinPct: v })}
+          />
+          <NumberField
+            label="Watergewicht"
+            unit="kg"
+            step={0.1}
+            value={day.body.waterMassKg}
+            onChange={(v) => patchBody({ waterMassKg: v })}
+          />
+          <NumberField
+            label="Lichaamswater"
+            unit="%"
+            step={0.1}
+            value={day.body.waterPct}
+            onChange={(v) => patchBody({ waterPct: v })}
           />
           <NumberField
             label="Visceraal vet"
@@ -267,7 +267,9 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged, onDe
               )}
               {afgeleid.vocht.afgeleid && afgeleid.vocht.kg != null && afgeleid.vocht.pct != null && (
                 <div className="stat">
-                  <div className="k">Vocht {day.body.waterMassKg == null ? '(kg)' : '(%)'}</div>
+                  <div className="k">
+                    Lichaamswater {day.body.waterMassKg == null ? '(kg)' : '(%)'}
+                  </div>
                   <div className="v">
                     {day.body.waterMassKg == null
                       ? nl(afgeleid.vocht.kg, 1)
