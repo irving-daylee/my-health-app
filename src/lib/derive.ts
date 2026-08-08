@@ -15,6 +15,24 @@ export function shiftISO(date: ISODate, days: number): ISODate {
   return toISO(d)
 }
 
+/**
+ * De maandag van de week waar deze datum in valt. Weekdoelen lopen van maandag
+ * tot en met zondag: op maandagochtend begin je weer op nul, in plaats van dat
+ * de trainingen van vorige week meeschuiven in een venster van zeven dagen.
+ */
+export function weekStart(date: ISODate): ISODate {
+  const d = new Date(date + 'T12:00:00')
+  // getDay(): zondag = 0, dus zondag telt als de zevende dag van de vorige week.
+  const offset = (d.getDay() + 6) % 7
+  return shiftISO(date, -offset)
+}
+
+/** De dagen van de week (maandag t/m de datum zelf) waar deze dag in valt. */
+export function weekDays(days: DayEntry[], date: ISODate): DayEntry[] {
+  const start = weekStart(date)
+  return days.filter((d) => d.date >= start && d.date <= date)
+}
+
 export function formatDate(date: ISODate): string {
   const d = new Date(date + 'T12:00:00')
   return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })

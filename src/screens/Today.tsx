@@ -26,6 +26,7 @@ import {
   sleepHours,
   todayISO,
   trendDelta,
+  weekDays,
   weightWarning,
   workoutKcal,
   workoutMinutes,
@@ -757,8 +758,8 @@ function WorkoutCard({
   profile: Profile
   onSave: (d: DayEntry) => void
 }) {
-  // deze week = de laatste zeven dagen tot en met vandaag
-  const week = days.filter((d) => d.date <= day.date).slice(-7)
+  // deze week = vanaf maandag tot en met de dag die je bekijkt
+  const week = weekDays(days, day.date)
   const weekMinuten = week.reduce(
     (sum, d) => sum + Math.max(workoutMinutes(d), d.exerciseMin ?? 0),
     0,
