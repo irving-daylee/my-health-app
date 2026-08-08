@@ -81,7 +81,7 @@ export default function SettingsScreen({
     try {
       const count = await importAll(JSON.parse(await file.text()))
       await onReload()
-      setMsg(`${count} dagen geïmporteerd.`)
+      setMsg(`${count} dagen samengevoegd met wat er al stond.`)
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Import mislukt.')
     }
