@@ -4,6 +4,7 @@ import { WORKOUT_LABELS } from '../types'
 import { allFoods, putFoods } from '../lib/db'
 import { learnFromDay, searchFoods, type FoodItem } from '../lib/foods'
 import { forecast } from '../lib/forecast'
+import { predictNextWeight } from '../lib/predict'
 import { Card, NumberField, Scale, TimeField, Toggle } from '../components/inputs'
 import {
   balance,
@@ -1010,7 +1011,59 @@ function Vooruitblik({
           kans op spierverlies en slechte energie.
         </p>
       )}
+
+      <MorgenVerwachting day={day} days={days} />
     </div>
+  )
+}
+
+/**
+ * De weging van morgenochtend. Bewust een band en geen enkel getal: één dag
+ * verschil op de weegschaal is voor het grootste deel vocht, en dat laat zich
+ * niet op honderd gram voorspellen.
+ */
+function MorgenVerwachting({ day, days }: { day: DayEntry; days: DayEntry[] }) {
+  const p = predictNextWeight(days, day.date)
+  if (!p) return null
+
+  return (
+    <>
+      <h4 style={{ marginTop: 18 }}>Morgenochtend op de weegschaal</h4>
+      <ul className="forecast-lines">
+        <li>
+          <span>Verwacht</span>
+          <strong>
+            {nl(p.expected, 1)} kg
+            <em>
+              meestal tussen {nl(p.low, 1)} en {nl(p.high, 1)} kg
+            </em>
+          </strong>
+        </li>
+        <li>
+          <span>Uit je trend</span>
+          <strong>
+            {signed(p.trendPart, 2, 'kg')}
+            <em>per dag, vanaf {nl(p.level, 1)} kg vandaag</em>
+          </strong>
+        </li>
+        {p.balancePart != null && (
+          <li>
+            <span>Door vandaag</span>
+            <strong className={p.balancePart < 0 ? 'good' : 'warn'}>
+              {signed(p.balancePart, 2, 'kg')}
+              <em>
+                {p.balancePart < 0 ? 'minder' : 'meer'} gegeten dan je gemiddelde dag
+              </em>
+            </strong>
+          </li>
+        )}
+      </ul>
+      <p className="note">
+        De band is ± {nl(p.noise, 1)} kg, gerekend over {p.basis} wegingen — zo ver ligt een losse
+        ochtendweging bij jou normaal van je lijn. Zout, een zware training of een laat avondmaal
+        verschuiven je vocht makkelijk meer dan het vet van een hele dag.
+      </p>
+    </>
   )
 }
 
