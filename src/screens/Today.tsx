@@ -1046,6 +1046,16 @@ function MorgenVerwachting({ day, days }: { day: DayEntry; days: DayEntry[] }) {
             <em>per dag, vanaf {nl(p.level, 1)} kg vandaag</em>
           </strong>
         </li>
+        {p.effects.map((e) => (
+          <li key={e.key}>
+            <span>{e.label} vandaag</span>
+            <strong className={e.kg > 0 ? 'warn' : 'good'}>
+              {signed(e.kg, 2, 'kg')}
+              <em>bij jou gemeten over {e.days} keer</em>
+            </strong>
+          </li>
+        ))}
+
         {p.balancePart != null && (
           <li>
             <span>Door vandaag</span>
