@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { DayEntry, Profile } from '../types'
 import { Card } from '../components/inputs'
 import { balance, burned, nl, signed, sleepHours, trendDelta, weighIns, weightTrend } from '../lib/derive'
+import { backtest, learnEffects } from '../lib/predict'
 
 const RANGES = [
   { label: '1 dag', days: 2 },
@@ -152,7 +153,99 @@ export default function Trends({ days, profile }: { days: DayEntry[]; profile: P
           trekt het cijfer niet omlaag.
         </p>
       </Card>
+
+      <Voorspellingscontrole days={days} />
     </>
+  )
+}
+
+/**
+ * De voorspelling die zichzelf nakijkt. Dit hoort op het scherm en niet in een
+ * logbestand: een app die vooruit rekent maar nooit laat zien hoe vaak ze ernaast
+ * zat, vraagt vertrouwen dat ze niet verdiend heeft.
+ *
+ * Kijkt over je hele historie, niet over de gekozen periode: nakijken heeft veel
+ * dagen nodig, en een terugtoets over zeven dagen zegt niets.
+ */
+function Voorspellingscontrole({ days }: { days: DayEntry[] }) {
+  const check = useMemo(() => backtest(days), [days])
+  const effecten = useMemo(
+    () => (days.length ? learnEffects(days, days[days.length - 1].date) : []),
+    [days],
+  )
+
+  if (!check) {
+    return (
+      <Card title="Klopt de voorspelling?">
+        <p className="empty">
+          Zodra er tien opeenvolgende wegingen zijn, reken ik hier na hoe goed de verwachting voor
+          de volgende ochtend uitkwam.
+        </p>
+      </Card>
+    )
+  }
+
+  const beterDanNiets = check.naiveMae - check.mae
+
+  return (
+    <Card title="Klopt de voorspelling?">
+      <div className="grid">
+        <div className="stat">
+          <div className="k">Gemiddeld ernaast</div>
+          <div className="v">
+            {nl(check.mae, 2)}
+            <small>kg over {check.n} wegingen</small>
+          </div>
+        </div>
+        <div className="stat">
+          <div className="k">Binnen de band</div>
+          <div className="v">{Math.round(check.coverage * 100)}%</div>
+        </div>
+        <div className="stat">
+          <div className="k">Scheefstand</div>
+          <div className={`v ${Math.abs(check.bias) < 0.1 ? 'good' : ''}`}>
+            {signed(check.bias, 2, 'kg')}
+          </div>
+        </div>
+      </div>
+
+      <p className="note" style={{ marginTop: 12 }}>
+        {beterDanNiets > 0.02 ? (
+          <>
+            Ter vergelijking: gokken dat je morgen weegt wat je vandaag woog zit er {nl(check.naiveMae, 2)} kg
+            naast. De voorspelling wint daar {nl(beterDanNiets, 2)} kg op.
+          </>
+        ) : (
+          <>
+            Let op: simpelweg aannemen dat je morgen weegt wat je vandaag woog zit er {nl(check.naiveMae, 2)} kg
+            naast — even goed of beter. Het rekenwerk levert je op dit moment dus niets op.
+          </>
+        )}{' '}
+        De band zou ongeveer 68% van je wegingen moeten vangen; vangt hij er veel meer, dan is hij
+        te ruim en suggereert hij minder houvast dan er is.
+      </p>
+
+      {effecten.length > 0 && (
+        <>
+          <h4 style={{ marginTop: 16 }}>Wat de weegschaal bij jou verschuift</h4>
+          <ul className="forecast-lines">
+            {effecten.map((e) => (
+              <li key={e.key}>
+                <span>{e.label}</span>
+                <strong className={e.kg > 0 ? 'warn' : 'good'}>
+                  {signed(e.kg, 2, 'kg')}
+                  <em>de ochtend erna, over {e.days} keer</em>
+                </strong>
+              </li>
+            ))}
+          </ul>
+          <p className="note">
+            Gemeten aan je eigen wegingen, niet uit een tabel overgenomen. Dit is wat er samenvalt —
+            geen bewijs van oorzaak, en met een paar tientallen dagen blijft het een schatting.
+          </p>
+        </>
+      )}
+    </Card>
   )
 }
 
