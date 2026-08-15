@@ -173,65 +173,136 @@ export type WeightPrediction = {
   /** band waarbinnen je weging normaal gesproken valt */
   low: number
   high: number
-  /** je huidige niveau volgens de lijn, ontdaan van dagruis */
+  /** je niveau nu volgens de lijn, ontdaan van dagruis */
   level: number
-  /** wat de lijn er van vandaag op morgen bij doet, in kg */
-  trendPart: number
+  /** het stuk van je laatste weging dat naar verwachting blijft hangen, in kg */
+  carryPart: number | null
+  /** welk deel van een afwijking bij jou een dag later nog over is (0-0,8) */
+  carryShare: number
+  /** je trend in kg per week — context, geen onderdeel van de verwachting */
+  trendPerWeek: number
   /** correctie voor hoe vandaag afwijkt van je gemiddelde dag, in kg */
   balancePart: number | null
   /** wat vandaag verder nog telt: alcohol, zaalvoetbal — geleerd uit je eigen data */
   effects: Effect[]
-  /** typische dagruis: hoe ver een losse weging normaal van de lijn afligt */
+  /** hoe ver deze voorspelling er in het verleden gemiddeld naast zat (spreiding) */
   noise: number
   /** aantal wegingen waar dit op rust */
   basis: number
 }
 
-/**
- * Wat de weegschaal morgenochtend waarschijnlijk aanwijst.
- *
- * De basis is een rechte lijn door je wegingen van de afgelopen twee weken,
- * doorgetrokken naar morgen. Bewust niet het 7-daags gemiddelde dat de app
- * verder overal toont: dat gemiddelde loopt een paar dagen achter — het is het
- * midden van het venster erachter — en dat is precies de fout die je niet wilt
- * als je vooruit rekent. Val je een ons per dag af, dan zou het gemiddelde je
- * morgen structureel drie ons te zwaar voorspellen.
- *
- * Daar komt bij wat de lijn nog niet kan weten: at je vandaag meer of minder
- * dan je gemiddelde dag, dan telt alleen dat *verschil* mee. Het gemiddelde
- * zelf zit al in de helling verwerkt, dus dat er nog eens bij optellen zou
- * dubbelop zijn.
- *
- * De band eromheen is geen slag om de arm maar het eigenlijke antwoord. Wat de
- * weegschaal 's ochtends aanwijst is voor een groot deel vocht: zout, glycogeen
- * na een zware training, een biertje, hoe laat je at. Dat is al gauw enkele
- * honderden grammen op en neer, terwijl het echte vetverschil van één dag
- * zelden boven de honderd gram komt. De breedte komt daarom uit jouw eigen
- * wegingen: hoe ver die normaal van de lijn liggen.
- */
-export function predictNextWeight(days: DayEntry[], from: ISODate): WeightPrediction | null {
-  const punten = weighIns(days)
-    .filter((d) => d.date <= from)
-    .map((d) => ({ x: dagNummer(d.date), y: d.body.weightKg! }))
-  const recent = punten.filter((p) => p.x > dagNummer(from) - VENSTER)
-  // Vier wegingen over minstens een week: minder is geen lijn maar een gok.
-  if (recent.length < 4) return null
-
-  const x = recent.map((p) => p.x)
-  const y = recent.map((p) => p.y)
-  if (x[x.length - 1] - x[0] < 7) return null
-
+/** Niveau en helling uit een kleinste-kwadratenfit, gemeten op de laatste dag. */
+function niveauEnHelling(punten: { x: number; y: number }[]) {
+  const x = punten.map((p) => p.x)
+  const y = punten.map((p) => p.y)
   const mx = mean(x)
   const my = mean(y)
   const noemer = x.reduce((s, xi) => s + (xi - mx) ** 2, 0)
   if (noemer === 0) return null
   const helling = x.reduce((s, xi, i) => s + (xi - mx) * (y[i] - my), 0) / noemer
-  const lijn = (dag: number) => my + helling * (dag - mx)
+  const laatste = x[x.length - 1]
+  return { niveau: my + helling * (laatste - mx), helling }
+}
+
+/**
+ * Elke dag uit je historie waarvoor we destijds een voorspelling hadden kunnen
+ * doen: het niveau van dat moment, de weging van die dag, en wat de weegschaal
+ * de ochtend erna werkelijk aanwees. Hiermee valt zowel te kiezen hoe zwaar de
+ * weging van vandaag moet meetellen als hoe breed de band hoort te zijn.
+ */
+function oefenrondes(punten: { x: number; y: number }[]) {
+  const uit: { niveau: number; vandaag: number; morgen: number }[] = []
+  for (let i = 0; i < punten.length - 1; i++) {
+    if (punten[i + 1].x - punten[i].x !== 1) continue
+    const venster = punten.filter((p) => p.x > punten[i].x - VENSTER && p.x <= punten[i].x)
+    if (venster.length < 4 || venster[venster.length - 1].x - venster[0].x < 7) continue
+    const f = niveauEnHelling(venster)
+    if (!f) continue
+    uit.push({ niveau: f.niveau, vandaag: punten[i].y, morgen: punten[i + 1].y })
+  }
+  return uit
+}
+
+/**
+ * Hoeveel van een afwijking blijft er bij jou een dag later nog over? Sta je
+ * vanochtend een halve kilo boven je niveau, dan is dat morgen zelden helemaal
+ * verdwenen: vocht en darminhoud verlopen over dagen, niet over uren.
+ *
+ * We meten dat niet aan de samenhang tussen opeenvolgende afwijkingen maar aan
+ * wat het in voorspellen oplevert: welk aandeel had je eigen wegingen het beste
+ * voorspeld? Dat scheelt, want een afwijking ten opzichte van een lijn over een
+ * lange periode bevat ook echte niveauverschuivingen — een blessure, een
+ * verhuizing — en die zouden het aandeel kunstmatig richting één duwen.
+ *
+ * Het dal is breed: tussen 0,4 en 0,7 maakt het nauwelijks verschil. Vandaar
+ * een grof raster; net doen alsof we dit op twee decimalen weten zou de
+ * nauwkeurigheid overdrijven.
+ */
+function besteAandeel(rondes: { niveau: number; vandaag: number; morgen: number }[]): number {
+  let beste = 0.5
+  let besteFout = Infinity
+  for (let share = 0; share <= 0.9; share += 0.1) {
+    const fout = mean(
+      rondes.map((r) => Math.abs(r.niveau + share * (r.vandaag - r.niveau) - r.morgen)),
+    )
+    if (fout < besteFout) {
+      besteFout = fout
+      beste = share
+    }
+  }
+  return Math.round(beste * 10) / 10
+}
+
+/**
+ * Wat de weegschaal morgenochtend waarschijnlijk aanwijst.
+ *
+ * Twee dingen bepalen het getal. Je niveau — een lijn door je wegingen van de
+ * afgelopen twee weken, wat er overblijft als je de dagruis wegdenkt. En het
+ * deel van je laatste weging dat naar verwachting blijft hangen: stond je
+ * vanochtend een halve kilo hoog, dan is daar morgen meestal nog iets van over.
+ *
+ * Wat er bewust *niet* in zit is je trend. Dat lijkt tegennatuurlijk, maar over
+ * één dag is die trend vrijwel niets waard: een stevig tempo van een halve kilo
+ * per week is 0,07 kg per dag, en dat verdwijnt volledig in de onzekerheid
+ * waarmee je die helling überhaupt meet. Je koopt een verwaarloosbare correctie
+ * met een flinke schatfout. Op de historie van deze app gemeten maakte het de
+ * voorspelling telkens slechter, hoe hard we de helling ook krompen. De trend
+ * blijft wel staan als informatie — voor de vraag waar je over een maand staat
+ * is hij juist het enige dat telt.
+ *
+ * De band komt niet uit de spreiding rond de lijn maar uit de fouten die deze
+ * voorspelling in het verleden echt maakte. Dat scheelt: een band gebouwd op de
+ * spreiding rond de lijn is te krap, want hij vergeet dat het niveau van morgen
+ * zelf ook nog onzeker is.
+ */
+export function predictNextWeight(days: DayEntry[], from: ISODate): WeightPrediction | null {
+  const alle = weighIns(days)
+    .filter((d) => d.date <= from)
+    .map((d) => ({ x: dagNummer(d.date), y: d.body.weightKg! }))
+  const recent = alle.filter((p) => p.x > dagNummer(from) - VENSTER)
+  // Vier wegingen over minstens een week: minder is geen lijn maar een gok.
+  if (recent.length < 4) return null
+  if (recent[recent.length - 1].x - recent[0].x < 7) return null
+
+  const fit = niveauEnHelling(recent)
+  if (!fit) return null
 
   const doel = shiftISO(from, 1)
-  const laatsteWeging = x[x.length - 1]
+  const laatste = recent[recent.length - 1]
   // Is je laatste weging al een tijd geleden, dan wordt doortrekken gokken.
-  if (dagNummer(doel) - laatsteWeging > 7) return null
+  if (dagNummer(doel) - laatste.x > 7) return null
+
+  // Hoeveel van de weging van vandaag blijft er morgen hangen, en hoe ver zit
+  // deze voorspelling er bij jou normaal naast? Allebei uit dezelfde oefening:
+  // wat zou dit recept in je eigen historie hebben gedaan?
+  const rondes = oefenrondes(alle)
+  if (rondes.length < 10) return null
+  const share = besteAandeel(rondes)
+
+  // Persistentie dooft uit: van twee dagen terug is nog maar het kwadraat over.
+  const gat = dagNummer(doel) - laatste.x
+  const carryShare = share ** gat
+  const carryPart = carryShare * (laatste.y - fit.niveau)
 
   // Alleen de dag waar we vandaan rekenen kan nog niet in de lijn zitten.
   const vandaag = days.find((d) => d.date === from)
@@ -245,28 +316,15 @@ export function predictNextWeight(days: DayEntry[], from: ISODate): WeightPredic
       ? (vandaagBalans - mean(eerdereBalansen)) / KCAL_PER_KG
       : null
 
-  // De spreiding rond de lijn, en alleen binnen het venster waarop die lijn is
-  // gefit: wegingen van een maand terug liggen ver van deze lijn omdat je toen
-  // een ander gewicht had, niet omdat je dagruis zo groot is.
-  const restanten = recent.map((p) => p.y - lijn(p.x))
-  if (restanten.length < 5) return null
-  // Delen door n−2: de lijn is zelf uit deze punten getrokken en ligt er dus per
-  // constructie dichterbij dan bij een volgende weging het geval zal zijn.
-  const spreiding = Math.sqrt(
-    restanten.reduce((s, r) => s + r * r, 0) / (restanten.length - 2),
-  )
-  // Minstens 200 gram: bij weinig wegingen komt de spreiding onrealistisch laag
-  // uit, en dan suggereert de band een zekerheid die er niet is.
-  const noise = Math.max(spreiding, 0.2)
-
   // Wat je vandaag hebt gedaan zie je morgenochtend op de weegschaal.
   const effects = vandaag
     ? learnEffects(days, from).filter((e) => FACTOREN.find((f) => f.key === e.key)!.op(vandaag))
     : []
 
-  const level = lijn(dagNummer(from))
+  const noise = bandbreedte(rondes, share)
+
   const expected =
-    lijn(dagNummer(doel)) + (balancePart ?? 0) + effects.reduce((s, e) => s + e.kg, 0)
+    fit.niveau + carryPart + (balancePart ?? 0) + effects.reduce((s, e) => s + e.kg, 0)
   const af = (n: number) => Math.round(n * 100) / 100
 
   return {
@@ -275,12 +333,33 @@ export function predictNextWeight(days: DayEntry[], from: ISODate): WeightPredic
     expected: af(expected),
     low: af(expected - noise),
     high: af(expected + noise),
-    level: af(level),
-    trendPart: af(helling),
+    level: af(fit.niveau),
+    carryPart: af(carryPart),
+    carryShare: Math.round(carryShare * 100) / 100,
+    trendPerWeek: af(fit.helling * 7),
     balancePart: balancePart == null ? null : af(balancePart),
     noise: af(noise),
-    basis: restanten.length,
+    basis: alle.length,
   }
+}
+
+/**
+ * De spreiding van de fouten die deze voorspelling in het verleden maakte. Dit
+ * is wat de band eerlijk maakt: niet hoe dicht de lijn bij je oude wegingen
+ * ligt, maar hoe ver de voorspelling er de volgende ochtend naast bleek te
+ * zitten. Een band op de eerste maat is stelselmatig te krap — hij vergeet dat
+ * het niveau van morgen zelf ook nog onzeker is.
+ */
+function bandbreedte(
+  rondes: { niveau: number; vandaag: number; morgen: number }[],
+  share: number,
+): number {
+  const fouten = rondes.map((r) => r.morgen - (r.niveau + share * (r.vandaag - r.niveau)))
+  const m = mean(fouten)
+  const sd = Math.sqrt(mean(fouten.map((f) => (f - m) ** 2)))
+  // Minstens 200 gram: bij weinig wegingen komt de spreiding onrealistisch laag
+  // uit, en dan suggereert de band een zekerheid die er niet is.
+  return Math.max(sd, 0.2)
 }
 
 /** De uitkomst van het nakijken: hoe goed bleek de voorspelling achteraf? */

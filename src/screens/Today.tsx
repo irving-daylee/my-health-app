@@ -1040,12 +1040,21 @@ function MorgenVerwachting({ day, days }: { day: DayEntry; days: DayEntry[] }) {
           </strong>
         </li>
         <li>
-          <span>Uit je trend</span>
+          <span>Je niveau nu</span>
           <strong>
-            {signed(p.trendPart, 2, 'kg')}
-            <em>per dag, vanaf {nl(p.level, 1)} kg vandaag</em>
+            {nl(p.level, 1)} kg
+            <em>je wegingen zonder de dagruis</em>
           </strong>
         </li>
+        {p.carryPart != null && Math.abs(p.carryPart) >= 0.05 && (
+          <li>
+            <span>Blijft hangen van vandaag</span>
+            <strong className={p.carryPart > 0 ? 'warn' : 'good'}>
+              {signed(p.carryPart, 2, 'kg')}
+              <em>{Math.round(p.carryShare * 100)}% van je afwijking van vanochtend</em>
+            </strong>
+          </li>
+        )}
         {p.effects.map((e) => (
           <li key={e.key}>
             <span>{e.label} vandaag</span>
@@ -1069,9 +1078,11 @@ function MorgenVerwachting({ day, days }: { day: DayEntry; days: DayEntry[] }) {
         )}
       </ul>
       <p className="note">
-        De band is ± {nl(p.noise, 1)} kg, gerekend over {p.basis} wegingen — zo ver ligt een losse
-        ochtendweging bij jou normaal van je lijn. Zout, een zware training of een laat avondmaal
-        verschuiven je vocht makkelijk meer dan het vet van een hele dag.
+        De band is ± {nl(p.noise, 1)} kg: zo ver zat deze voorspelling er in het verleden bij jou
+        naast, gemeten over {p.basis} wegingen. Zout, een zware training of een laat avondmaal
+        verschuiven je vocht makkelijk meer dan het vet van een hele dag. Je trend van{' '}
+        {signed(p.trendPerWeek, 2, 'kg')} per week zit hier bewust niet in — over één dag is die te
+        klein om te meten, en meerekenen maakte de voorspelling aantoonbaar slechter.
       </p>
     </>
   )
