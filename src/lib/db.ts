@@ -94,31 +94,63 @@ export async function exportAll() {
 }
 
 /**
- * Voegt een binnenkomende dag samen met wat er al staat. Een import bevat vaak
- * maar een stukje van de dag — bijvoorbeeld alleen een weging — en mag de rest
- * van die dag niet wissen. Ingevulde waardes uit het bestand winnen, alles wat
- * daar ontbreekt blijft staan. Maaltijden en trainingen worden op `id`
- * samengevoegd, zodat dezelfde regel niet dubbel verschijnt.
+ * Voegt een binnenkomende dag samen met wat er al staat.
+ *
+ * Twee regels, in deze volgorde:
+ *
+ * 1. Lege plekken worden altijd aangevuld. Een import bevat vaak maar een
+ *    stukje van een dag -- bijvoorbeeld alleen een weging -- en mag de rest
+ *    van die dag niet wissen.
+ * 2. Een waarde die er al staat wordt alleen vervangen als het bestand
+ *    nieuwer is, of als het bestand geen tijdstempel heeft. Zonder die
+ *    voorwaarde overschrijft een oude export van je eigen data stilletjes je
+ *    latere correcties: werk je 's ochtends een tussenstand bij en 's avonds
+ *    de eindstand, dan zet een import van een bestand van tussendoor de
+ *    tussenstand terug.
+ *
+ * Maaltijden en trainingen gaan op `id` samen, zodat dezelfde regel niet
+ * dubbel verschijnt.
  */
 export function mergeDay(mine: DayEntry | undefined, incoming: DayEntry): DayEntry {
   if (!mine) return incoming
-  const defined = <T extends object>(o: T): Partial<T> =>
-    Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>
+  // Een bestand van een andere app (een weegschaalexport) heeft helemaal geen
+  // tijdstempel. Dan valt er niets te vergelijken en is de import zelf het
+  // signaal: je haalt hem binnen omdat je die waardes wilt. Alleen bij een
+  // bestand dat wel een tijdstempel heeft en aantoonbaar ouder is, houden we
+  // vast aan wat hier staat.
+  const bestandIsNieuwer =
+    (incoming.updatedAt ?? 0) === 0 || (incoming.updatedAt ?? 0) > (mine.updatedAt ?? 0)
+
+  /** Waardes uit het bestand die mogen winnen: alles bij een nieuwer bestand,
+   *  anders alleen wat hier nog leeg is. */
+  const teNemen = <T extends object>(basis: T, binnen: T): Partial<T> =>
+    Object.fromEntries(
+      Object.entries(binnen).filter(
+        ([k, v]) =>
+          v !== undefined &&
+          (bestandIsNieuwer || (basis as Record<string, unknown>)[k] === undefined),
+      ),
+    ) as Partial<T>
+
   const byId = <T extends { id: string }>(a: T[], b: T[]) => {
     const map = new Map(a.map((x) => [x.id, x]))
-    for (const x of b) map.set(x.id, x)
+    // Een bekende regel alleen vervangen als het bestand nieuwer is; onbekende
+    // regels komen er hoe dan ook bij.
+    for (const x of b) if (bestandIsNieuwer || !map.has(x.id)) map.set(x.id, x)
     return [...map.values()]
   }
+
   return {
     ...mine,
-    ...defined(incoming),
-    sleep: { ...mine.sleep, ...defined(incoming.sleep) },
-    body: { ...mine.body, ...defined(incoming.body) },
-    context: { ...mine.context, ...defined(incoming.context) },
+    ...teNemen(mine, incoming),
+    sleep: { ...mine.sleep, ...teNemen(mine.sleep, incoming.sleep) },
+    body: { ...mine.body, ...teNemen(mine.body, incoming.body) },
+    context: { ...mine.context, ...teNemen(mine.context, incoming.context) },
     meals: byId(mine.meals, incoming.meals),
     workouts: byId(mine.workouts, incoming.workouts),
-    // Een import op een gewiste dag brengt hem terug: er staat weer iets in.
-    deleted: incoming.deleted,
+    // Een import op een gewiste dag brengt hem terug -- maar een oud bestand
+    // mag een dag die je later hebt gewist niet uit de dood halen.
+    deleted: bestandIsNieuwer ? incoming.deleted : mine.deleted,
     // Het resultaat is nieuwer dan beide bronnen, anders duwt sync de oude
     // serverversie er zo overheen.
     updatedAt: Date.now(),
