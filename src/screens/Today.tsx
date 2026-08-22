@@ -939,7 +939,7 @@ function Vooruitblik({
                 {f.burnIsMeasured
                   ? 'ingevuld'
                   : f.burnIsPartial
-                    ? 'jouw gemiddelde — je eigen cijfer is nog van een halve dag'
+                    ? 'jouw gemiddelde — nog geen hele dag'
                     : 'jouw gemiddelde'}
               </em>
             </strong>
