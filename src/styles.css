@@ -370,6 +370,18 @@ textarea {
   color: var(--white);
 }
 
+/* Door de app gezet, niet door jou: gestippeld, zodat het zichtbaar geen knop is. */
+.chip.afgeleid {
+  border-style: dashed;
+  cursor: default;
+}
+
+.chip.afgeleid[data-on='true'] {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
+}
+
 .btn {
   border: 0;
   border-radius: 10px;

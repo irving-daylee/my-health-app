@@ -203,6 +203,20 @@ export function Toggle(props: { label: string; on: boolean; onChange: (v: boolea
   )
 }
 
+/**
+ * Een vinkje dat de app zelf zet. Ziet eruit als de andere, maar is niet aan te
+ * klikken: de waarde volgt uit iets wat je elders al invulde. Staat er altijd,
+ * ook als hij uit staat — anders lijkt een afwezig vinkje op een ontbrekende
+ * functie, terwijl het gewoon 'vandaag niet' betekent.
+ */
+export function AfgeleidChip(props: { label: string; on: boolean; title: string }) {
+  return (
+    <span className="chip afgeleid" data-on={props.on ? 'true' : 'false'} title={props.title}>
+      {props.label}
+    </span>
+  )
+}
+
 export function Scale(props: {
   label: string
   value: number | undefined
