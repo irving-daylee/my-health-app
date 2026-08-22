@@ -119,6 +119,27 @@ export function sleepHours(day: DayEntry): number | undefined {
   return Math.round((mins / 60) * 10) / 10
 }
 
+/**
+ * Was dit een voetbaldag? Het vinkje in je context telt, maar een gelogde
+ * wedstrijd of training ook — anders hangt het ervan af waar je het die dag
+ * toevallig invulde.
+ */
+export const voetbalDag = (day: DayEntry | undefined): boolean =>
+  day != null &&
+  (day.context.football === true ||
+    day.workouts.some((w) => w.type === 'zaalvoetbal' || w.type === 'training'))
+
+/**
+ * De dag ná zaalvoetbal, afgeleid uit gisteren. Bewust geen eigen vinkje: dat
+ * zou je hetzelfde twee keer laten invullen, en bij een vergeten vinkje zouden
+ * de twee elkaar tegenspreken. Dit is de ochtend waarop je vocht en glycogeen
+ * weer aanvult — de terugslag na de dip.
+ */
+export const naVoetbalDag = (days: DayEntry[], date: ISODate): boolean => {
+  const gisteren = days.find((d) => d.date === shiftISO(date, -1))
+  return voetbalDag(gisteren) && !voetbalDag(days.find((d) => d.date === date))
+}
+
 /** Alleen nuchtere ochtendwegingen tellen mee — avondwegingen vervuilen de trend. */
 export const weighIns = (days: DayEntry[]) =>
   days.filter((d) => d.body.weightKg != null && d.body.fasted !== false)

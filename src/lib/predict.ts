@@ -1,5 +1,5 @@
 import type { DayEntry, ISODate } from '../types'
-import { balance, shiftISO, weighIns } from './derive'
+import { balance, shiftISO, voetbalDag, weighIns } from './derive'
 
 const KCAL_PER_KG = 7700
 /** Over hoeveel dagen we de lijn door je wegingen leggen. */
@@ -72,20 +72,15 @@ export type Effect = {
  */
 type Dagen = { gisteren: DayEntry; eergisteren?: DayEntry }
 
-const isVoetbal = (d: DayEntry | undefined) =>
-  d != null &&
-  (d.context.football === true ||
-    d.workouts.some((w) => w.type === 'zaalvoetbal' || w.type === 'training'))
-
 const FACTOREN: { key: Effect['key']; label: string; op: (d: Dagen) => boolean }[] = [
   { key: 'alcohol', label: 'Alcohol', op: (d) => d.gisteren.context.alcohol === true },
-  { key: 'voetbal', label: 'Zaalvoetbal', op: (d) => isVoetbal(d.gisteren) },
+  { key: 'voetbal', label: 'Zaalvoetbal', op: (d) => voetbalDag(d.gisteren) },
   {
     key: 'naVoetbal',
     label: 'Dag na zaalvoetbal',
     // De tweede ochtend: gisteren was zelf de dag na de wedstrijd. Dit is de
     // terugslag, en die hoort apart geteld — anders middelt hij weg tegen de dip.
-    op: (d) => isVoetbal(d.eergisteren) && !isVoetbal(d.gisteren),
+    op: (d) => voetbalDag(d.eergisteren) && !voetbalDag(d.gisteren),
   },
   {
     key: 'kracht',

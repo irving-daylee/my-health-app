@@ -21,6 +21,7 @@ import {
   intakeProtein,
   mealKcal,
   minutesOfDay,
+  naVoetbalDag,
   nowTime,
   nl,
   signed,
@@ -378,6 +379,14 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged, onDe
             onChange={(v) => patch({ context: { ...day.context, football: v } })}
           />
         </div>
+        {naVoetbalDag(days, day.date) && (
+          <p className="note" style={{ marginTop: 10 }}>
+            <strong>Dag na voetbal.</strong> Dit zet de app zelf, omdat je gisteren voetbalde — geen
+            vinkje dus, anders vul je hetzelfde twee keer in. Vanochtend telt apart mee in wat de
+            app over je weegschaal leert: na een wedstrijd sta je eerst laag en de dag erna weer
+            terug.
+          </p>
+        )}
         <div style={{ marginTop: 12 }}>
           <Scale
             label="Stress (1 laag — 5 hoog)"
