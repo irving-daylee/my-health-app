@@ -4,6 +4,7 @@ import {
   burned,
   laatsteDagen,
   logPeriode,
+  wekenSpan,
   lastMealMinutes,
   intakeKcal,
   intakeProtein,
@@ -34,28 +35,6 @@ const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d
 const nf = (n: number, d = 1) => round(n, d).toLocaleString('nl-NL')
 const s = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-/**
- * Over hoeveel weken rekenen we een 'per week'-cijfer uit?
- *
- * Niet over alle dagen die je in de app hebt staan. Importeer je een jaar aan
- * wegingen uit je weegschaal, dan komen daar honderden dagen bij zonder ook maar
- * een training erin — en dan zou 'twee keer per week' vanzelf verwateren tot
- * 'nul komma twee keer per week', zonder dat je iets anders bent gaan doen.
- *
- * Daarom rekenen we over het bereik waarin je dit onderdeel daadwerkelijk hebt
- * bijgehouden: van de eerste tot de laatste dag met een invoer. Dat is het
- * venster waarover de uitspraak geldt, en dat hoort er ook bij te staan.
- */
-function periode(dagen: DayEntry[]) {
-  if (dagen.length === 0) return null
-  const eerste = dagen[0].date
-  const laatste = dagen[dagen.length - 1].date
-  const spanDagen =
-    (new Date(laatste + 'T12:00:00').getTime() - new Date(eerste + 'T12:00:00').getTime()) /
-      86_400_000 +
-    1
-  return { weken: Math.max(spanDagen / 7, 1), dagen: Math.round(spanDagen), gelogd: dagen.length }
-}
 
 /** Bedtijden na middernacht doortellen, zodat 00:30 naast 23:45 valt en niet 23 uur ervan af. */
 function bedtimeMinutes(t: string): number {
@@ -383,14 +362,14 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
     // Niet het gemiddelde van de ingevulde dagen maal zeven: dat doet alsof je
     // elke dag beweegminuten logt, en maakt van drie ingevulde sportdagen een
     // torenhoog weekcijfer. Het totaal gedeeld door de weken die je overspant.
-    const p = periode(move)!
-    const weekly = Math.round(move.reduce((a, d) => a + d.exerciseMin!, 0) / p.weken)
+    const span = wekenSpan(move)
+    const weekly = Math.round(move.reduce((a, d) => a + d.exerciseMin!, 0) / span)
     out.push({
       tag: weekly >= 150 ? 'positive' : 'neutral',
       tagText: 'Beweging',
       title: `Ongeveer ${weekly} minuten per week`,
       body:
-        `Gemeten over ${s(p.dagen, 'dag', 'dagen')}, waarvan je er ${p.gelogd} invulde ` +
+        `Gemeten over ${Math.round(span * 7)} dagen, waarvan je er ${move.length} invulde ` +
         `(${move[0].date} tot ${move[move.length - 1].date}). ` +
         (weekly >= 150
           ? 'Boven de 150 minuten die als richtlijn wordt aangehouden.'
@@ -401,17 +380,17 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
   // krachttraining is de knop die bepaalt of je spiermassa behoudt tijdens een tekort
   const metTraining = days.filter((d) => d.workouts.length > 0)
   if (metTraining.length >= 5) {
-    const p = periode(metTraining)!
+    const span = wekenSpan(metTraining)
     const kracht = metTraining.filter((d) =>
       d.workouts.some((w) => w.type === 'krachttraining'),
     ).length
-    const perWeek = Math.round((kracht / p.weken) * 10) / 10
+    const perWeek = Math.round((kracht / span) * 10) / 10
     out.push({
       tag: perWeek >= 2 ? 'positive' : 'warning',
       tagText: 'Krachttraining',
       title: `${nf(perWeek, 1)} keer per week`,
       body:
-        `${s(kracht, 'krachtsessie', 'krachtsessies')} in de ${s(p.dagen, 'dag', 'dagen')} ` +
+        `${s(kracht, 'krachtsessie', 'krachtsessies')} in de ${Math.round(span * 7)} dagen ` +
         `tussen je eerste en laatste gelogde training (${metTraining[0].date} tot ` +
         `${metTraining[metTraining.length - 1].date}). ` +
         (perWeek >= 2
@@ -444,16 +423,16 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
 
   const metMinuten = days.filter((d) => workoutMinutes(d) > 0)
   if (metMinuten.length >= 4) {
-    const p = periode(metMinuten)!
+    const span = wekenSpan(metMinuten)
     const totaal = metMinuten.reduce((a, d) => a + workoutMinutes(d), 0)
-    const perWeek = Math.round(totaal / p.weken)
+    const perWeek = Math.round(totaal / span)
     out.push({
       tag: perWeek >= 150 ? 'positive' : 'neutral',
       tagText: 'Trainingsduur',
       title: `${perWeek} minuten per week gelogd`,
       body:
-        `${totaal} minuten over ${s(p.gelogd, 'trainingsdag', 'trainingsdagen')}, verspreid over ` +
-        `${s(p.dagen, 'dag', 'dagen')} (${metMinuten[0].date} tot ${metMinuten[metMinuten.length - 1].date}). ` +
+        `${totaal} minuten over ${s(metMinuten.length, 'trainingsdag', 'trainingsdagen')}, verspreid ` +
+        `over ${Math.round(span * 7)} dagen (${metMinuten[0].date} tot ${metMinuten[metMinuten.length - 1].date}). ` +
         (perWeek >= 150
           ? 'Boven de richtlijn van 150 minuten matige inspanning per week.'
           : 'De gangbare richtlijn is 150 minuten per week. Dit telt alleen wat je zelf logt — losse beweging zit in je beweegminuten.'),
