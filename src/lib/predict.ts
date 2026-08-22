@@ -56,7 +56,7 @@ function kleinsteKwadraten(X: number[][], y: number[]): { coef: number[]; se: nu
 
 /** Een effect dat de app uit jouw eigen wegingen heeft geleerd. */
 export type Effect = {
-  key: 'alcohol' | 'voetbal' | 'kracht' | 'ziek'
+  key: 'alcohol' | 'voetbal' | 'naVoetbal' | 'kracht' | 'ziek'
   label: string
   /** hoeveel kg dit de ochtend erna gemiddeld scheelt bij jou */
   kg: number
@@ -64,21 +64,35 @@ export type Effect = {
   days: number
 }
 
-const FACTOREN: { key: Effect['key']; label: string; op: (d: DayEntry) => boolean }[] = [
-  { key: 'alcohol', label: 'Alcohol', op: (d) => d.context.alcohol === true },
+/**
+ * Waar een factor naar kijkt. `gisteren` is de dag voor de weging — wat je
+ * gisteren deed zie je vanochtend. `eergisteren` is er voor effecten die een
+ * dag later pas komen: de terugslag na zaalvoetbal is niet de ochtend erna maar
+ * die daarna, als het vocht en glycogeen weer aangevuld zijn.
+ */
+type Dagen = { gisteren: DayEntry; eergisteren?: DayEntry }
+
+const isVoetbal = (d: DayEntry | undefined) =>
+  d != null &&
+  (d.context.football === true ||
+    d.workouts.some((w) => w.type === 'zaalvoetbal' || w.type === 'training'))
+
+const FACTOREN: { key: Effect['key']; label: string; op: (d: Dagen) => boolean }[] = [
+  { key: 'alcohol', label: 'Alcohol', op: (d) => d.gisteren.context.alcohol === true },
+  { key: 'voetbal', label: 'Zaalvoetbal', op: (d) => isVoetbal(d.gisteren) },
   {
-    key: 'voetbal',
-    label: 'Zaalvoetbal',
-    op: (d) =>
-      d.context.football === true ||
-      d.workouts.some((w) => w.type === 'zaalvoetbal' || w.type === 'training'),
+    key: 'naVoetbal',
+    label: 'Dag na zaalvoetbal',
+    // De tweede ochtend: gisteren was zelf de dag na de wedstrijd. Dit is de
+    // terugslag, en die hoort apart geteld — anders middelt hij weg tegen de dip.
+    op: (d) => isVoetbal(d.eergisteren) && !isVoetbal(d.gisteren),
   },
   {
     key: 'kracht',
     label: 'Krachttraining',
-    op: (d) => d.workouts.some((w) => w.type === 'krachttraining'),
+    op: (d) => d.gisteren.workouts.some((w) => w.type === 'krachttraining'),
   },
-  { key: 'ziek', label: 'Ziek', op: (d) => d.context.ill === true },
+  { key: 'ziek', label: 'Ziek', op: (d) => d.gisteren.context.ill === true },
 ]
 
 /**
@@ -120,19 +134,20 @@ export function learnEffects(days: DayEntry[], upto: ISODate): Effect[] {
   const waarnemingen = wegingen
     .map((d, i) => {
       const eerder = wegingen.slice(Math.max(0, i - 6), i)
-      const vorige = perDatum.get(shiftISO(d.date, -1))
-      if (eerder.length < 3 || !vorige) return null
+      const gisteren = perDatum.get(shiftISO(d.date, -1))
+      if (eerder.length < 3 || !gisteren) return null
       const basis = mean(eerder.map((e) => e.body.weightKg!))
-      return { rest: d.body.weightKg! - basis, vorige }
+      const dagen: Dagen = { gisteren, eergisteren: perDatum.get(shiftISO(d.date, -2)) }
+      return { rest: d.body.weightKg! - basis, dagen }
     })
-    .filter((w): w is { rest: number; vorige: DayEntry } => w != null)
+    .filter((w): w is { rest: number; dagen: Dagen } => w != null)
 
   if (waarnemingen.length < 20) return []
 
   // Alleen factoren die vaak genoeg beide kanten op gaan; een vlag die altijd
   // aan staat of maar twee keer voorkomt valt niet van de rest te scheiden.
   const bruikbaar = FACTOREN.filter((f) => {
-    const met = waarnemingen.filter((w) => f.op(w.vorige)).length
+    const met = waarnemingen.filter((w) => f.op(w.dagen)).length
     return met >= 5 && waarnemingen.length - met >= 5
   })
   if (bruikbaar.length === 0) return []
@@ -142,7 +157,7 @@ export function learnEffects(days: DayEntry[], upto: ISODate): Effect[] {
   // sport toeschrijven en andersom; samen schatten deelt het toe aan wat het
   // beste verklaart. De eerste kolom is een constante, die de rest opvangt van
   // wat er systematisch in de residuen zit.
-  const X = waarnemingen.map((w) => [1, ...bruikbaar.map((f) => (f.op(w.vorige) ? 1 : 0))])
+  const X = waarnemingen.map((w) => [1, ...bruikbaar.map((f) => (f.op(w.dagen) ? 1 : 0))])
   const y = waarnemingen.map((w) => w.rest)
   const fit = kleinsteKwadraten(X, y)
   if (!fit) return []
@@ -155,7 +170,7 @@ export function learnEffects(days: DayEntry[], upto: ISODate): Effect[] {
     // ruis met een naam, en die op je scherm zetten is erger dan zwijgen.
     if (!Number.isFinite(fout) || fout === 0 || Math.abs(coef) < 2 * fout) return
 
-    const dagen = waarnemingen.filter((w) => factor.op(w.vorige)).length
+    const dagen = waarnemingen.filter((w) => factor.op(w.dagen)).length
     const krimp = dagen / (dagen + 5)
     const kg = Math.round(coef * krimp * 100) / 100
     // Onder de vijftig gram maakt het voor je weging niets uit.
@@ -317,8 +332,11 @@ export function predictNextWeight(days: DayEntry[], from: ISODate): WeightPredic
       : null
 
   // Wat je vandaag hebt gedaan zie je morgenochtend op de weegschaal.
+  const gisteren = days.find((d) => d.date === shiftISO(from, -1))
   const effects = vandaag
-    ? learnEffects(days, from).filter((e) => FACTOREN.find((f) => f.key === e.key)!.op(vandaag))
+    ? learnEffects(days, from).filter((e) =>
+        FACTOREN.find((f) => f.key === e.key)!.op({ gisteren: vandaag, eergisteren: gisteren }),
+      )
     : []
 
   const noise = bandbreedte(rondes, share)
