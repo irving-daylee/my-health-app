@@ -1,8 +1,11 @@
 import type { DayEntry, Profile } from '../types'
 import {
   burned,
+  afgeslotenDagen,
   estimatedBmr,
   intakeKcal,
+  logPeriode,
+  wekenSpan,
   sleepHours,
   weighIns,
   weightTrend,
@@ -48,22 +51,34 @@ function measuredTdee(days: DayEntry[]): number | null {
   return Math.round(mean(withIntake.map(intakeKcal)) - perDagKg * KCAL_PER_KG)
 }
 
-/** Terugval: wat je horloge de afgelopen dagen aan verbranding rapporteerde. */
-function watchTdee(days: DayEntry[]): number | null {
-  const withBurn = days.map(burned).filter((b) => b > 0)
-  return withBurn.length >= 5 ? Math.round(mean(withBurn)) : null
+/**
+ * Terugval: wat je horloge de afgelopen dagen aan verbranding rapporteerde.
+ *
+ * Alleen hele dagen tellen mee. Een dag zonder rustverbranding, een dag die je
+ * halverwege hebt afgelezen en een tikfout als "1 kcal" zijn alle drie geen
+ * dagverbruik. Zonder deze zeef zakt het gemiddelde tot ver onder je
+ * basaalverbruik en stelt de app een gevaarlijk laag caloriedoel voor -- dus
+ * bij twijfel geven we liever niets terug dan een te laag getal.
+ */
+function watchTdee(days: DayEntry[], bmr: number | null): number | null {
+  const ondergrens = bmr ? bmr * 0.7 : 800
+  const heleDagen = days.filter((d) => (d.restingKcal ?? 0) >= ondergrens)
+  return heleDagen.length >= 5 ? Math.round(mean(heleDagen.map(burned))) : null
 }
 
-export function suggestGoals(days: DayEntry[], profile: Profile) {
+export function suggestGoals(alleDagen: DayEntry[], profile: Profile) {
   const suggestions: Suggestion[] = []
-  const laatste = weighIns(days).slice(-1)[0]?.body.weightKg
-  const trend = weightTrend(days)
+  // Vandaag is halverwege en zou elk daggemiddelde omlaag trekken. Voor de
+  // gewichtstrend gebruiken we wel alles: de weging van vanochtend is af.
+  const days = afgeslotenDagen(alleDagen)
+  const laatste = weighIns(alleDagen).slice(-1)[0]?.body.weightKg
+  const trend = weightTrend(alleDagen)
   const huidig = trend.length ? trend[trend.length - 1].value : laatste
 
   // ---------- calorie-inname ----------
   const gemeten = measuredTdee(days)
-  const horloge = watchTdee(days)
   const bmr = huidig ? estimatedBmr(profile, huidig, days[days.length - 1]?.date ?? '') : null
+  const horloge = watchTdee(days, bmr)
   const formule = bmr ? Math.round(bmr * 1.45) : null
 
   const tdee = gemeten ?? horloge ?? formule
@@ -103,8 +118,9 @@ export function suggestGoals(days: DayEntry[], profile: Profile) {
 
   // ---------- water ----------
   if (huidig) {
-    const beweegdagen = days.filter((d) => (d.exerciseMin ?? 0) >= 30).length
-    const opslag = beweegdagen / Math.max(days.length, 1) > 0.4 ? 300 : 0
+    const gelogd = logPeriode(days)
+    const beweegdagen = gelogd.filter((d) => (d.exerciseMin ?? 0) >= 30).length
+    const opslag = beweegdagen / Math.max(gelogd.length, 1) > 0.4 ? 300 : 0
     const doel = round(huidig * 35 + opslag, 100)
     suggestions.push({
       key: 'water',
@@ -120,11 +136,15 @@ export function suggestGoals(days: DayEntry[], profile: Profile) {
   }
 
   // ---------- beweegminuten ----------
-  const weken = Math.max(days.length / 7, 1)
+  // Alleen de periode dat je zelf logt, en gedeeld door de weken die daar
+  // echt tussen zitten. Anders deelt een geimporteerde geschiedenis vier
+  // getrainde dagen door een jaar, en luidt de uitkomst "2 minuten per week".
+  const periode = logPeriode(days)
+  const weken = wekenSpan(periode)
   const minutenPerWeek = Math.round(
-    days.reduce((sum, d) => sum + Math.max(workoutMinutes(d), d.exerciseMin ?? 0), 0) / weken,
+    periode.reduce((sum, d) => sum + Math.max(workoutMinutes(d), d.exerciseMin ?? 0), 0) / weken,
   )
-  if (days.length >= 7) {
+  if (periode.length >= 7) {
     // De richtlijn is 150 minuten. Haal je dat al, dan is een klein stapje
     // zinvoller dan een rond getal dat ver boven je huidige gewoonte ligt.
     const doel =
@@ -144,8 +164,10 @@ export function suggestGoals(days: DayEntry[], profile: Profile) {
   }
 
   // ---------- krachttraining ----------
-  const krachtDagen = days.filter((d) => d.workouts.some((w) => w.type === 'krachttraining')).length
-  if (days.length >= 7) {
+  const krachtDagen = periode.filter((d) =>
+    d.workouts.some((w) => w.type === 'krachttraining'),
+  ).length
+  if (periode.length >= 7) {
     const perWeek = Math.round((krachtDagen / weken) * 10) / 10
     const doel = perWeek < 2 ? 2 : Math.min(Math.ceil(perWeek), 4)
     suggestions.push({

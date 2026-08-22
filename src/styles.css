@@ -131,8 +131,13 @@ textarea {
 .tabbar {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  /* Even breed als de inhoud, en op dezelfde plek gecentreerd. Van rand tot
+     rand loopt hij op een breed venster los van de kaarten erboven -- en op
+     een telefoon in desktopmodus ziet dat eruit alsof de app kapot is. */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 640px;
   z-index: 30;
   display: flex;
   background: var(--white);
@@ -1212,7 +1217,8 @@ textarea {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--grey-200);
   font-size: 13px;
@@ -1227,7 +1233,10 @@ textarea {
 }
 
 .forecast-lines strong {
-  flex: none;
+  /* Mag krimpen en afbreken: de toelichting eronder is soms een halve zin, en
+     met flex:none duwde die de regel buiten de kaart. */
+  flex: 0 1 auto;
+  min-width: 0;
   text-align: right;
   font-size: 15px;
   font-weight: 700;
@@ -1243,6 +1252,7 @@ textarea {
 
 .forecast-lines em {
   display: block;
+  overflow-wrap: anywhere;
   font-style: normal;
   font-size: 11px;
   font-weight: 500;

@@ -269,3 +269,67 @@ export function derivedBody(body: DayEntry['body'], profile: Profile) {
 
   return { vet, vocht, eiwit, vetvrij, ffmi, bmi: bmi(profile, w) }
 }
+
+/* --------------------------- welke dagen tellen mee --------------------------- */
+
+/** Een dag waarop jij zelf iets hebt bijgehouden, los van een import. */
+export const zelfGelogd = (d: DayEntry) =>
+  d.meals.length > 0 ||
+  d.workouts.length > 0 ||
+  d.waterMl != null ||
+  d.restingKcal != null ||
+  d.sleep.bedtime != null ||
+  d.sleep.hours != null
+
+/**
+ * De periode waarin je daadwerkelijk logt, gerekend vanaf de eerste dag dat je
+ * zelf iets invulde.
+ *
+ * Een geïmporteerde weeggeschiedenis is prima data voor je gewichtstrend, maar
+ * zegt niets over hoe compleet je bijhoudt. Zonder dit onderscheid rekt elke
+ * noemer op tot honderden dagen en wordt "0% volledig gelogd" het antwoord.
+ */
+export function logPeriode(days: DayEntry[]): DayEntry[] {
+  const eerste = days.find(zelfGelogd)
+  return eerste ? days.filter((d) => d.date >= eerste.date) : []
+}
+
+/** Weken tussen de eerste en laatste dag, minimaal één. */
+export function wekenSpan(days: DayEntry[]): number {
+  if (days.length < 2) return 1
+  const eerste = new Date(days[0].date + 'T12:00:00').getTime()
+  const laatste = new Date(days[days.length - 1].date + 'T12:00:00').getTime()
+  return Math.max((laatste - eerste) / 86_400_000 / 7, 1)
+}
+
+/**
+ * De dagen binnen de laatste n kalenderdagen, geteld vanaf je laatste dag —
+ * niet de laatste n records. Bij een lijst met gaten scheelt dat sterk.
+ */
+export function laatsteDagen<T extends { date: ISODate }>(rijen: T[], n: number): T[] {
+  if (rijen.length === 0) return []
+  const eind = new Date(rijen[rijen.length - 1].date + 'T12:00:00').getTime()
+  const grens = eind - n * 86_400_000
+  return rijen.filter((r) => new Date(r.date + 'T12:00:00').getTime() >= grens)
+}
+
+/**
+ * De dagen die je hebt afgesloten. Vandaag telt niet mee in gemiddelden over
+ * calorieen, water of beweging: die vul je gedurende de dag aan, dus om drie
+ * uur 's middags staat er per definitie nog geen hele dag -- en een half
+ * dagverbruik in een gemiddelde trekt dat gemiddelde omlaag alsof je die dag
+ * echt minder verbruikte.
+ *
+ * Wegingen zijn de uitzondering en gaan hier niet doorheen: die zijn 's
+ * ochtends al af.
+ */
+export const afgeslotenDagen = (days: DayEntry[], vandaag: ISODate = todayISO()) =>
+  days.filter((d) => d.date < vandaag)
+
+/**
+ * Ondergrens waaronder een rustverbranding geen hele dag kan zijn. Wie
+ * gedurende de dag bijwerkt, leest halverwege een deel af -- dat cijfer is
+ * juist op dat moment, maar het is geen dagtotaal.
+ */
+export const heleDagVerbranding = (day: DayEntry, bmr: number | null) =>
+  (day.restingKcal ?? 0) >= (bmr ? bmr * 0.7 : 800)

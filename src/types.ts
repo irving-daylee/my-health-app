@@ -121,6 +121,22 @@ export type Settings = {
  * van buiten komt moet daarom hierlangs, anders klapt de eerste `day.body.x`
  * eruit.
  */
+/**
+ * Een tijdstempel die in de toekomst ligt kan niet kloppen en is gevaarlijk:
+ * bij het samenvoegen wint de hoogste `updatedAt`, dus zo'n dag is niet meer
+ * te corrigeren -- je wijziging van vandaag verliest van het jaar 3994 en wordt
+ * bij de eerstvolgende sync teruggedraaid. Een importbestand met kapotte
+ * tijdstempels bevriest op die manier je hele geschiedenis.
+ *
+ * We behandelen zo'n stempel als onbekend (0). De dag zelf blijft staan; hij
+ * verliest voortaan alleen van elke echte bewerking, wat precies goed is voor
+ * geimporteerde geschiedenis.
+ */
+const bruikbareTijdstempel = (ts: number | undefined): number => {
+  if (!ts || ts < 0) return 0
+  return ts > Date.now() + 86_400_000 ? 0 : ts
+}
+
 export const normalizeDay = (raw: Partial<DayEntry> & { date: ISODate }): DayEntry => ({
   ...raw,
   date: raw.date,
@@ -133,7 +149,7 @@ export const normalizeDay = (raw: Partial<DayEntry> & { date: ISODate }): DayEnt
       ? Object.values(raw.workouts)
       : [],
   context: raw.context ?? {},
-  updatedAt: raw.updatedAt ?? 0,
+  updatedAt: bruikbareTijdstempel(raw.updatedAt),
 })
 
 export const emptyDay = (date: ISODate): DayEntry => ({
