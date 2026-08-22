@@ -1,6 +1,8 @@
 import type { DayEntry, Profile } from '../types'
 import {
   burned,
+  laatsteDagen,
+  logPeriode,
   lastMealMinutes,
   intakeKcal,
   intakeProtein,
@@ -39,8 +41,16 @@ function bedtimeMinutes(t: string): number {
 }
 
 /** kg per week, uit de helling van het voortschrijdend gemiddelde. */
+/**
+ * Het tempo van je huidige lijn, niet van je hele geschiedenis. Over een
+ * geimporteerde weeggeschiedenis van meer dan een jaar middelt elke beweging
+ * zichzelf weg en luidt de uitkomst "je gewicht staat stil", ook als je al
+ * weken daalt.
+ */
+const TREND_VENSTER_DAGEN = 42
+
 function trendSlopePerWeek(days: DayEntry[]): number | null {
-  const t = weightTrend(days)
+  const t = laatsteDagen(weightTrend(days), TREND_VENSTER_DAGEN)
   if (t.length < 4) return null
   const first = t[0]
   const last = t[t.length - 1]
@@ -110,21 +120,24 @@ function weightInsights(days: DayEntry[], profile: Profile): Insight[] {
         } je streefgewicht en beweegt daar verder vandaan. Kijk naar je caloriebalans hieronder voordat je aan je training sleutelt — dat is meestal waar het zit.`,
       })
     }
-  } else if (slope != null && trend.length >= 10) {
+  } else if (slope != null && laatsteDagen(trend, TREND_VENSTER_DAGEN).length >= 10) {
     out.push({
       tag: 'neutral',
       tagText: 'Stabiel',
       title: 'Je gewicht staat stil',
       body: `Minder dan 0,1 kg verandering per week over ${s(
-        trend.length,
+        laatsteDagen(trend, TREND_VENSTER_DAGEN).length,
         'weging',
         'wegingen',
-      )}. Prima als dat je doel is; wil je wél bewegen, dan is een kleiner of groter calorieverschil de knop.`,
+      )} in de afgelopen zes weken. Prima als dat je doel is; wil je wél bewegen, dan is een kleiner of groter calorieverschil de knop.`,
     })
   }
 
   // vetmassa vs vetvrije massa — het punt van de hele exercitie
-  const comp = weighIns(days).filter((d) => d.body.fatMassKg != null && d.body.weightKg != null)
+  const comp = laatsteDagen(
+    weighIns(days).filter((d) => d.body.fatMassKg != null && d.body.weightKg != null),
+    90,
+  )
   if (comp.length >= 4) {
     const half = Math.max(1, Math.floor(comp.length / 3))
     const early = comp.slice(0, half)
@@ -436,18 +449,20 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
     }
   }
 
-  // hoe compleet log je eigenlijk?
-  if (days.length >= 7) {
-    const complete = days.filter(
+  // Hoe compleet log je eigenlijk? Alleen over de periode dat je zelf logt --
+  // een geimporteerde weeggeschiedenis meetellen zou hier altijd 0% opleveren.
+  const periode = logPeriode(days)
+  if (periode.length >= 7) {
+    const complete = periode.filter(
       (d) => d.body.weightKg != null && intakeKcal(d) > 0 && burned(d) > 0,
     ).length
-    const pct = Math.round((complete / days.length) * 100)
+    const pct = Math.round((complete / periode.length) * 100)
     if (pct < 70) {
       out.push({
         tag: 'warning',
         tagText: 'Volledigheid',
         title: `${pct}% van je dagen is volledig gelogd`,
-        body: `${complete} van ${days.length} dagen hebben gewicht, voeding én verbranding. De verbanden hierboven worden pas betrouwbaar als dat richting de 80% gaat — met gaten weet je niet of een patroon echt is of een meetfout.`,
+        body: `${complete} van ${periode.length} dagen sinds je begon met loggen hebben gewicht, voeding én verbranding. De verbanden hierboven worden pas betrouwbaar als dat richting de 80% gaat — met gaten weet je niet of een patroon echt is of een meetfout.`,
       })
     }
   }
