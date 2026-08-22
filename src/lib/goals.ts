@@ -1,6 +1,7 @@
 import type { DayEntry, Profile } from '../types'
 import {
   burned,
+  afgeslotenDagen,
   estimatedBmr,
   intakeKcal,
   logPeriode,
@@ -65,10 +66,13 @@ function watchTdee(days: DayEntry[], bmr: number | null): number | null {
   return heleDagen.length >= 5 ? Math.round(mean(heleDagen.map(burned))) : null
 }
 
-export function suggestGoals(days: DayEntry[], profile: Profile) {
+export function suggestGoals(alleDagen: DayEntry[], profile: Profile) {
   const suggestions: Suggestion[] = []
-  const laatste = weighIns(days).slice(-1)[0]?.body.weightKg
-  const trend = weightTrend(days)
+  // Vandaag is halverwege en zou elk daggemiddelde omlaag trekken. Voor de
+  // gewichtstrend gebruiken we wel alles: de weging van vanochtend is af.
+  const days = afgeslotenDagen(alleDagen)
+  const laatste = weighIns(alleDagen).slice(-1)[0]?.body.weightKg
+  const trend = weightTrend(alleDagen)
   const huidig = trend.length ? trend[trend.length - 1].value : laatste
 
   // ---------- calorie-inname ----------

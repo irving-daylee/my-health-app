@@ -1,6 +1,7 @@
 import type { DayEntry, Profile } from '../types'
 import {
   burned,
+  heleDagVerbranding,
   estimatedBmr,
   intakeKcal,
   mealKcal,
@@ -21,6 +22,8 @@ export type Forecast = {
   /** verbranding: gemeten als je die al hebt ingevuld, anders je eigen gemiddelde */
   expectedBurn: number | null
   burnIsMeasured: boolean
+  /** je verbranding is ingevuld maar nog niet compleet — er wordt met je gemiddelde gerekend */
+  burnIsPartial: boolean
   /** balans als je vandaag niets meer eet */
   balanceIfStopNow: number | null
   /** balans als je precies je doel volmaakt */
@@ -76,15 +79,23 @@ export function forecast(today: DayEntry, days: DayEntry[], profile: Profile): F
   const gewicht = trend.length ? trend[trend.length - 1].value : laatsteWeging
   const bmr = gewicht ? estimatedBmr(profile, gewicht, today.date) : null
 
-  const vandaagVerbrand = burned(today)
+  // Alleen hele dagen in het gemiddelde: een dag die halverwege is bijgewerkt
+  // en nooit is afgemaakt, is geen dagverbruik.
   const historie = days
-    .filter((d) => d.date !== today.date)
+    .filter((d) => d.date !== today.date && heleDagVerbranding(d, bmr))
     .map(burned)
-    .filter((b) => b > 0)
   const gemiddeldVerbrand = historie.length >= 3 ? Math.round(mean(historie)) : null
 
-  const expectedBurn = vandaagVerbrand > 0 ? vandaagVerbrand : gemiddeldVerbrand
-  const burnIsMeasured = vandaagVerbrand > 0
+  // Vandaag werk je gedurende de dag bij. Wat er om drie uur staat is je
+  // verbranding tot dan toe, niet je dagtotaal -- dat als heel etmaal
+  // gebruiken maakt je verwachte balans honderden calorieen te somber. Pas
+  // als het cijfer een hele dag kan zijn, rekenen we ermee.
+  const vandaagVerbrand = burned(today)
+  const vandaagIsHeleDag = heleDagVerbranding(today, bmr)
+  const expectedBurn = vandaagIsHeleDag ? vandaagVerbrand : gemiddeldVerbrand
+  const burnIsMeasured = vandaagIsHeleDag
+  /** je verbranding staat al ingevuld, maar is nog niet die van een hele dag */
+  const burnIsPartial = vandaagVerbrand > 0 && !vandaagIsHeleDag
 
   const innames = days
     .filter((d) => d.date !== today.date)
@@ -118,6 +129,7 @@ export function forecast(today: DayEntry, days: DayEntry[], profile: Profile): F
     bmr,
     expectedBurn,
     burnIsMeasured,
+    burnIsPartial,
     balanceIfStopNow,
     balanceIfGoal,
     kgPerWeekAtGoal,

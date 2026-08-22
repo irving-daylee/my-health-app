@@ -1,5 +1,6 @@
 import type { DayEntry, Profile } from '../types'
 import {
+  afgeslotenDagen,
   burned,
   laatsteDagen,
   logPeriode,
@@ -179,7 +180,9 @@ function weightInsights(days: DayEntry[], profile: Profile): Insight[] {
 function nutritionInsights(days: DayEntry[]): Insight[] {
   const out: Insight[] = []
 
-  const fullDays = days.filter((d) => burned(d) > 0 && intakeKcal(d) > 0)
+  // Vandaag is nog niet af: die dag hoort niet in een daggemiddelde.
+  const afgerond = afgeslotenDagen(days)
+  const fullDays = afgerond.filter((d) => burned(d) > 0 && intakeKcal(d) > 0)
   if (fullDays.length >= 3) {
     const balances = fullDays.map((d) => intakeKcal(d) - burned(d))
     const avg = mean(balances)
@@ -211,7 +214,7 @@ function nutritionInsights(days: DayEntry[]): Insight[] {
     }
   }
 
-  const intakeDays = days.filter((d) => intakeKcal(d) > 0)
+  const intakeDays = afgerond.filter((d) => intakeKcal(d) > 0)
   if (intakeDays.length >= 5) {
     const kcals = intakeDays.map(intakeKcal)
     const spread = stdev(kcals)
@@ -229,7 +232,7 @@ function nutritionInsights(days: DayEntry[]): Insight[] {
   }
 
   // eiwit is naast krachttraining de belangrijkste rem op spierverlies
-  const eiwitDagen = days.filter((d) => intakeProtein(d) > 0)
+  const eiwitDagen = afgerond.filter((d) => intakeProtein(d) > 0)
   const gewicht = weighIns(days).slice(-1)[0]?.body.weightKg
   if (eiwitDagen.length >= 3 && gewicht) {
     const gemiddeld = mean(eiwitDagen.map(intakeProtein))
@@ -255,7 +258,8 @@ function nutritionInsights(days: DayEntry[]): Insight[] {
 function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
   const out: Insight[] = []
 
-  const waterDays = days.filter((d) => d.waterMl != null)
+  const afgerond = afgeslotenDagen(days)
+  const waterDays = afgerond.filter((d) => d.waterMl != null)
   if (waterDays.length >= 5) {
     const hits = waterDays.filter((d) => d.waterMl! >= profile.waterGoalMl).length
     const pct = Math.round((hits / waterDays.length) * 100)
@@ -451,7 +455,7 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
 
   // Hoe compleet log je eigenlijk? Alleen over de periode dat je zelf logt --
   // een geimporteerde weeggeschiedenis meetellen zou hier altijd 0% opleveren.
-  const periode = logPeriode(days)
+  const periode = logPeriode(afgerond)
   if (periode.length >= 7) {
     const complete = periode.filter(
       (d) => d.body.weightKg != null && intakeKcal(d) > 0 && burned(d) > 0,

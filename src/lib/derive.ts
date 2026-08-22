@@ -312,3 +312,24 @@ export function laatsteDagen<T extends { date: ISODate }>(rijen: T[], n: number)
   const grens = eind - n * 86_400_000
   return rijen.filter((r) => new Date(r.date + 'T12:00:00').getTime() >= grens)
 }
+
+/**
+ * De dagen die je hebt afgesloten. Vandaag telt niet mee in gemiddelden over
+ * calorieen, water of beweging: die vul je gedurende de dag aan, dus om drie
+ * uur 's middags staat er per definitie nog geen hele dag -- en een half
+ * dagverbruik in een gemiddelde trekt dat gemiddelde omlaag alsof je die dag
+ * echt minder verbruikte.
+ *
+ * Wegingen zijn de uitzondering en gaan hier niet doorheen: die zijn 's
+ * ochtends al af.
+ */
+export const afgeslotenDagen = (days: DayEntry[], vandaag: ISODate = todayISO()) =>
+  days.filter((d) => d.date < vandaag)
+
+/**
+ * Ondergrens waaronder een rustverbranding geen hele dag kan zijn. Wie
+ * gedurende de dag bijwerkt, leest halverwege een deel af -- dat cijfer is
+ * juist op dat moment, maar het is geen dagtotaal.
+ */
+export const heleDagVerbranding = (day: DayEntry, bmr: number | null) =>
+  (day.restingKcal ?? 0) >= (bmr ? bmr * 0.7 : 800)

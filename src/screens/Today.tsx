@@ -935,7 +935,13 @@ function Vooruitblik({
             <span>Verbranding vandaag</span>
             <strong>
               {f.expectedBurn} kcal
-              <em>{f.burnIsMeasured ? 'ingevuld' : 'jouw gemiddelde'}</em>
+              <em>
+                {f.burnIsMeasured
+                  ? 'ingevuld'
+                  : f.burnIsPartial
+                    ? 'jouw gemiddelde — je eigen cijfer is nog van een halve dag'
+                    : 'jouw gemiddelde'}
+              </em>
             </strong>
           </li>
         )}
