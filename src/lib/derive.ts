@@ -132,13 +132,16 @@ export const voetbalDag = (day: DayEntry | undefined): boolean =>
 /**
  * De dag ná zaalvoetbal, afgeleid uit gisteren. Bewust geen eigen vinkje: dat
  * zou je hetzelfde twee keer laten invullen, en bij een vergeten vinkje zouden
- * de twee elkaar tegenspreken. Dit is de ochtend waarop je vocht en glycogeen
- * weer aanvult — de terugslag na de dip.
+ * de twee elkaar tegenspreken. Dit is de dag waarop je vocht en glycogeen weer
+ * aanvult — de terugslag na de dip.
+ *
+ * Sluit een voetbaldag níet uit. Speel je twee dagen achter elkaar, dan ben je
+ * vandaag allebei: je vult nog aan van gisteren én je speelt vanavond weer. De
+ * twee effecten werken dan tegen elkaar in en horen bij elkaar opgeteld te
+ * worden, niet tegen elkaar weggestreept.
  */
-export const naVoetbalDag = (days: DayEntry[], date: ISODate): boolean => {
-  const gisteren = days.find((d) => d.date === shiftISO(date, -1))
-  return voetbalDag(gisteren) && !voetbalDag(days.find((d) => d.date === date))
-}
+export const naVoetbalDag = (days: DayEntry[], date: ISODate): boolean =>
+  voetbalDag(days.find((d) => d.date === shiftISO(date, -1)))
 
 /** Alleen nuchtere ochtendwegingen tellen mee — avondwegingen vervuilen de trend. */
 export const weighIns = (days: DayEntry[]) =>

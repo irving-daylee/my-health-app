@@ -386,10 +386,10 @@ export default function Today({ day, days, profile, onSave, onFoodsChanged, onDe
         </div>
         <p className="note" style={{ marginTop: 10 }}>
           <strong>Dag na voetbal</strong> zet de app zelf — gestippeld, want er valt niets aan te
-          tikken. Hij licht op als je gisteren voetbalde. Een eigen vinkje zou je hetzelfde twee
-          keer laten invullen, en bij vergeten zouden de twee elkaar tegenspreken. Deze dag telt
-          apart mee in wat de app over je weegschaal leert: na een wedstrijd sta je eerst laag en
-          de dag erna weer terug.
+          tikken. Hij licht op als je gisteren voetbalde, ook als je vandaag weer speelt: bij twee
+          dagen achter elkaar staan ze allebei aan en tellen hun effecten bij elkaar op. Deze dag
+          telt apart mee in wat de app over je weegschaal leert: na een wedstrijd sta je eerst laag
+          en de dag erna weer terug.
         </p>
         <div style={{ marginTop: 12 }}>
           <Scale

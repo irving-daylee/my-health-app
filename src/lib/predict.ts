@@ -80,7 +80,11 @@ const FACTOREN: { key: Effect['key']; label: string; op: (d: Dagen) => boolean }
     label: 'Dag na zaalvoetbal',
     // De tweede ochtend: gisteren was zelf de dag na de wedstrijd. Dit is de
     // terugslag, en die hoort apart geteld — anders middelt hij weg tegen de dip.
-    op: (d) => voetbalDag(d.eergisteren) && !voetbalDag(d.gisteren),
+    //
+    // Een voetbaldag wordt niet uitgesloten: bij twee wedstrijden achter elkaar
+    // gelden beide vlaggen, en de regressie telt hun effecten dan gewoon bij
+    // elkaar op. Dat is precies wat er die ochtend ook gebeurt.
+    op: (d) => voetbalDag(d.eergisteren),
   },
   {
     key: 'kracht',
