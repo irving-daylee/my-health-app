@@ -1,5 +1,5 @@
 import type { Body, DayEntry, ISODate, Profile } from '../types'
-import { ageAt, derivedBody, voetbalDag, weighIns } from './derive'
+import { afgeslotenDagen, ageAt, derivedBody, logPeriode, voetbalDag, weighIns } from './derive'
 
 /**
  * Vergelijking van je weging van vanochtend met de vorige, plus wat die
@@ -429,12 +429,102 @@ export function peilingen(body: Body, profile: Profile, datum: ISODate): Peiling
   return uit
 }
 
+export type Advies = { titel: string; tekst: string }
+
+const glazen = (ml: number) => Math.round(ml / 250)
+
+/**
+ * Vochtadvies, en hier zit een valkuil die de rest van de app ook heeft: een
+ * laag gelogd watertotaal betekent niet dat je te weinig drinkt. Het kan net zo
+ * goed betekenen dat je het niet bijhoudt.
+ *
+ * Het waterpercentage van de weegschaal is de controle op die vraag. Staat dat
+ * normaal terwijl je gelogde inname laag is, dan is er niets aan de hand met je
+ * vochtbalans en is het je logboek dat gaten heeft. Dat verschil moet de app
+ * benoemen in plaats van je aansporen tot iets wat je misschien al doet.
+ */
+function vochtAdvies(days: DayEntry[], profile: Profile, lichaam: Body): Advies[] {
+  const uit: Advies[] = []
+  const periode = logPeriode(afgeslotenDagen(days))
+  const gelogd = periode.filter((d) => d.waterMl != null)
+  if (periode.length < 5) return uit
+
+  const doel = profile.waterGoalMl
+  const waarden = gelogd.map((d) => d.waterMl!)
+  const gem = waarden.length ? gemiddelde(waarden) : 0
+  const gehaald = waarden.filter((w) => w >= doel).length
+  const dekking = gelogd.length / periode.length
+  const waterPct = lichaam.waterPct
+  const gewicht = lichaam.weightKg
+
+  // Voor mannen wordt 50 tot 65% aangehouden; zit je daarin, dan is je
+  // vochtbalans in orde ongeacht wat je logboek zegt.
+  const balansOk = waterPct != null && waterPct >= 50
+
+  if (dekking < 0.5) {
+    uit.push({
+      titel: 'Eerst vollediger loggen, dan pas conclusies',
+      tekst: `Je hebt water ingevuld op ${gelogd.length} van de ${periode.length} dagen, en de waardes zijn vrijwel allemaal veelvouden van 550 ml — je logt per fles. Gemiddeld komt daar ${Math.round(
+        gem,
+      ).toLocaleString('nl-NL')} ml uit, maar dat is bijna zeker minder dan je werkelijk drinkt: koffie, thee, melk en het glas bij het eten tellen ook mee en die staan er niet in.${
+        balansOk
+          ? ` Je waterpercentage van ${nf(waterPct!, 1)}% zegt dat je vochtbalans gewoon in orde is. Er is dus geen reden om meer te gaan drinken; er is reden om beter bij te houden wat je al drinkt.`
+          : ''
+      }`,
+    })
+  } else if (gehaald === 0 && waarden.length >= 5) {
+    uit.push({
+      titel: `Je haalde je waterdoel op geen van de ${waarden.length} gelogde dagen`,
+      tekst: `Gemiddeld ${Math.round(gem).toLocaleString('nl-NL')} ml tegen een doel van ${doel.toLocaleString(
+        'nl-NL',
+      )} ml. Dat gat is ongeveer ${glazen(doel - gem)} glazen per dag. Vaste momenten werken beter dan een voornemen: een glas bij het opstaan, bij elke koffie er één water naast, en een fles op je bureau die je twee keer leegdrinkt.`,
+    })
+  }
+
+  // Het doel zelf klopt mogelijk niet met je gewicht.
+  if (gewicht != null) {
+    const gangbaar = Math.round((gewicht * 35) / 100) * 100
+    if (doel < gangbaar * 0.8) {
+      uit.push({
+        titel: `Je waterdoel staat op ${doel.toLocaleString('nl-NL')} ml, gangbaar is ongeveer ${gangbaar.toLocaleString('nl-NL')}`,
+        tekst: `De vuistregel is 35 ml per kilo lichaamsgewicht, dus voor ${nf(
+          gewicht,
+          1,
+        )} kg komt dat op zo'n ${gangbaar.toLocaleString('nl-NL')} ml. Bij Voorgestelde doelen hierboven kun je dat in één tik overnemen. Haal je dan alsnog je doel niet, dan zegt dat meer over het doel dan over jou.`,
+      })
+    }
+  }
+
+  // Zaalvoetbal is bij deze gebruiker de grootste vochtpost van de week.
+  const voetbaldagen = periode.filter((d) => voetbalDag(d)).length
+  if (voetbaldagen >= 2) {
+    uit.push({
+      titel: 'Op zaalvoetbaldagen heb je meer nodig',
+      tekst: `Je speelde ${voetbaldagen} keer in deze periode. Een uur zaalvoetbal kost al snel een liter vocht, en dat komt er niet vanzelf bij. Drink een half uur voor de wedstrijd twee glazen, en vul na afloop aan tot je de volgende ochtend weer op je normale gewicht staat — sta je dan een kilo lichter, dan is dat vocht dat je nog moet inhalen, geen resultaat. Bij zweten verlies je ook zout; bij meerdere wedstrijden per week is wat zout of een sportdrank daarna zinvoller dan alleen water.`,
+    })
+  }
+
+  // De koppeling met de weegschaal: dit is waarom vocht hier uberhaupt toe doet.
+  uit.push({
+    titel: 'Vocht is de reden dat je weegschaal zo schommelt',
+    tekst: `Verreweg het grootste deel van je dagverschillen is vochtbalans, niet vet. Uitgedroogd wegen levert bovendien een hóger vetpercentage op: minder vocht is meer elektrische weerstand, en daar leest de weegschaal vet uit. Weeg daarom elke ochtend op hetzelfde moment, nuchter en na het plassen — dan is wat je ziet tenminste steeds dezelfde meting.`,
+  })
+
+  return uit
+}
+
 /**
  * Aanbevelingen volgen uit waar je staat en welke kant je trend op gaat --
- * nooit uit het verschil van één dag, want daar zit niets in om op te sturen.
+ * nooit uit het verschil van een enkele dag, want daar zit niets in om op te
+ * sturen.
  */
-export function aanbevelingen(peiling: Peiling[], body: Body, profile: Profile): string[] {
-  const uit: string[] = []
+export function aanbevelingen(
+  peiling: Peiling[],
+  lichaam: Body,
+  profile: Profile,
+  days: DayEntry[] = [],
+): Advies[] {
+  const uit: Advies[] = []
   const vind = (l: string) => peiling.find((p) => p.label === l)
 
   const vet = vind('Lichaamsvet')
@@ -444,32 +534,52 @@ export function aanbevelingen(peiling: Peiling[], body: Body, profile: Profile):
   const ffmi = vind('Vetvrije massa-index')
 
   if (visceraal?.oordeel === 'hoog') {
-    uit.push(
-      'Zet visceraal vet bovenaan. Dat daalt met een calorietekort en met regelmatig duurwerk; het reageert daar zelfs sneller op dan je totale vetpercentage.',
-    )
+    uit.push({
+      titel: 'Visceraal vet eerst',
+      tekst:
+        'Dit is het vet rond je organen en het weegt zwaarder voor je gezondheid dan je totale vetpercentage. Het reageert goed op een calorietekort en op regelmatig duurwerk, vaak zelfs sneller dan de rest.',
+    })
   }
+
   if (vet?.oordeel === 'hoog') {
-    const teGaan = body.weightKg != null ? body.weightKg - profile.targetWeightKg : null
-    uit.push(
-      `Je vetpercentage is de knop, niet je gewicht${
-        teGaan != null && teGaan > 0 ? ` — je zit ${nf(teGaan, 1)} kg boven je streefgewicht` : ''
-      }. Een tekort van 400 tot 550 kcal per dag houdt het tempo op ongeveer een halve kilo per week zonder je spiermassa aan te tasten.`,
-    )
+    const teGaan = lichaam.weightKg != null ? lichaam.weightKg - profile.targetWeightKg : null
+    uit.push({
+      titel: 'Stuur op je vetpercentage, niet op de weegschaal',
+      tekst: `${
+        teGaan != null && teGaan > 0
+          ? `Je zit ${nf(teGaan, 1)} kg boven je streefgewicht. `
+          : ''
+      }Een tekort van 400 tot 550 kcal per dag houdt het tempo op ongeveer een halve kilo per week — snel genoeg om iets te zien, langzaam genoeg om je spiermassa te sparen. Groter is niet beter: daaronder gaat vetvrije massa mee.`,
+    })
   }
+
   if (ffmi?.oordeel === 'laag' || eiwit?.oordeel === 'laag') {
-    uit.push(
-      'Twee keer per week krachttraining en genoeg eiwit zijn samen de belangrijkste rem op spierverlies tijdens een tekort. Voor jouw gewicht komt dat neer op ruwweg 1,6 tot 2,2 gram eiwit per kilo per dag.',
-    )
+    const kg = lichaam.weightKg
+    uit.push({
+      titel: 'Eiwit en krachttraining beschermen je spiermassa',
+      tekst: `Samen zijn dit de belangrijkste rem op spierverlies tijdens een tekort. Twee keer per week kracht is de ondergrens${
+        kg ? `, en qua eiwit is ${Math.round(kg * 1.6)} tot ${Math.round(kg * 2.2)} gram per dag de gangbare marge voor jouw gewicht` : ''
+      }.`,
+    })
   }
+
   if (water?.oordeel === 'laag') {
-    uit.push(
-      'Je waterpercentage ligt laag. Meer drinken helpt, maar dit getal stijgt vooral vanzelf als je vetpercentage daalt — vetweefsel bevat nu eenmaal minder water.',
-    )
+    uit.push({
+      titel: 'Je waterpercentage ligt onder het bereik',
+      tekst:
+        'Meer drinken helpt, maar dit getal stijgt vooral vanzelf als je vetpercentage daalt: vetweefsel bevat minder water dan spierweefsel. Zie het dus als een gevolg, niet als een losse knop.',
+    })
   }
+
+  uit.push(...vochtAdvies(days, profile, lichaam))
+
   if (vet?.oordeel === 'goed' && ffmi?.oordeel !== 'laag') {
-    uit.push(
-      'Je samenstelling ligt er goed bij. Vasthouden wat je doet is hier zinvoller dan een strenger tekort: dat kost meestal spiermassa.',
-    )
+    uit.push({
+      titel: 'Vasthouden is hier het advies',
+      tekst:
+        'Je samenstelling ligt er goed bij. Een strenger tekort levert op dit punt meestal spierverlies op in plaats van sneller resultaat.',
+    })
   }
+
   return uit
 }

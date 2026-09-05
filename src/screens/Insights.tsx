@@ -33,7 +33,7 @@ export default function Insights({
   const wegingen = laatsteWeging ? wegingenInVenster(days, laatsteWeging.date) : 0
   const peiling =
     gemiddeld && wegingen >= 3 ? peilingen(gemiddeld, profile, laatsteWeging.date) : []
-  const adviezen = gemiddeld && peiling.length ? aanbevelingen(peiling, gemiddeld, profile) : []
+  const adviezen = gemiddeld && peiling.length ? aanbevelingen(peiling, gemiddeld, profile, days) : []
 
   const vergelijking = laatsteWeging ? vergelijkWegingen(days, laatsteWeging.date) : null
   const vorigeDag = vergelijking && days.find((d) => d.date === vergelijking.vorige)
@@ -174,11 +174,14 @@ export default function Insights({
           {adviezen.length > 0 && (
             <>
               <h4 className="blok-titel">Wat ik zou doen</h4>
-              <ul className="adviezen">
-                {adviezen.map((a, i) => (
-                  <li key={i}>{a}</li>
+              <div className="adviezen">
+                {adviezen.map((a) => (
+                  <article className="advies" key={a.titel}>
+                    <h5>{a.titel}</h5>
+                    <p>{a.tekst}</p>
+                  </article>
                 ))}
-              </ul>
+              </div>
             </>
           )}
 

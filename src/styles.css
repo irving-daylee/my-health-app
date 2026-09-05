@@ -1587,10 +1587,25 @@ textarea {
 }
 
 .adviezen {
-  margin: 0;
-  padding-left: 18px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+.advies {
+  background: var(--grey);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.advies h5 {
+  margin: 0 0 4px;
   font-size: 13px;
+  font-weight: 700;
+}
+
+.advies p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--grey-600);
 }
