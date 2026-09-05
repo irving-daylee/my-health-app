@@ -489,3 +489,98 @@ function habitInsights(days: DayEntry[], profile: Profile): Insight[] {
 
   return out
 }
+
+/* ------------------------ duiding bij de gemiddelden ------------------------ */
+
+export type PeriodeDuiding = { titel: string; tekst: string; toon: Insight['tag'] }
+
+/**
+ * Uitleg bij de kale gemiddelden op Trends. Drie regels, over de periode dat je
+ * werkelijk logt -- niet over alle dagen in de app, want daar zit een
+ * geimporteerde weeggeschiedenis van honderden dagen in zonder voeding, water
+ * of slaap. En zonder vandaag, want een lopend dagtotaal is geen hele dag.
+ */
+export function periodeDuiding(
+  dagen: DayEntry[],
+  profile: Profile,
+): { periode: string; duidingen: PeriodeDuiding[] } {
+  const gelogd = logPeriode(afgeslotenDagen(dagen))
+  const weken = wekenSpan(gelogd)
+  const duidingen: PeriodeDuiding[] = []
+
+  const periode =
+    gelogd.length === 0
+      ? 'Nog geen gelogde dagen in deze periode.'
+      : `Gerekend over ${s(gelogd.length, 'gelogde dag', 'gelogde dagen')} sinds ${
+          gelogd[0].date.split('-').reverse().join('-')
+        }, vandaag niet meegeteld omdat die nog loopt.`
+
+  // ---------- slaap ----------
+  const slaap = gelogd.map(sleepHours).filter((h): h is number => h != null)
+  if (slaap.length >= 3) {
+    const gem = mean(slaap)
+    const kort = slaap.filter((h) => h < 7).length
+    duidingen.push({
+      titel: `Slaap: gemiddeld ${nf(gem, 1)} uur`,
+      toon: gem >= 7 ? 'positive' : 'warning',
+      tekst:
+        gem >= 7
+          ? `Boven de richtlijn van zeven uur, op ${s(slaap.length, 'nacht', 'nachten')}. Dat is de basis waar je herstel en je eetlust op draaien.`
+          : `${kort} van de ${slaap.length} nachten onder de zeven uur. Kort slapen verhoogt je eetlust en verlaagt je herstel — maar het is niet altijd een knop waar je vrij aan kunt draaien. Waar het wel kan helpt een vast tijdstip van naar bed gaan meer dan een uur extra in het weekend.`,
+    })
+  }
+
+  // ---------- water ----------
+  const water = gelogd.map((d) => d.waterMl).filter((w): w is number => w != null)
+  if (water.length >= 3) {
+    const gem = mean(water)
+    const gehaald = water.filter((w) => w >= profile.waterGoalMl).length
+    duidingen.push({
+      titel: `Water: gemiddeld ${Math.round(gem).toLocaleString('nl-NL')} ml`,
+      toon: gem >= profile.waterGoalMl * 0.9 ? 'positive' : 'warning',
+      tekst: `Doel gehaald op ${gehaald} van de ${s(water.length, 'gelogde dag', 'gelogde dagen')} (doel ${profile.waterGoalMl.toLocaleString('nl-NL')} ml). ${
+        gem >= profile.waterGoalMl * 0.9
+          ? 'Genoeg drinken houdt je wegingen ook rustiger: een deel van je dagschommeling is simpelweg vochtbalans.'
+          : 'Te weinig drinken maakt je weegschaal grilliger — vocht is verreweg de grootste bron van dagverschillen — en op een zaalvoetbaldag heb je meer nodig dan op een kantoordag.'
+      }`,
+    })
+  }
+
+  // ---------- balans en verbranding ----------
+  const heleDagen = gelogd.filter((d) => burned(d) > 0 && intakeKcal(d) > 0)
+  if (heleDagen.length >= 3) {
+    const balansen = heleDagen.map((d) => intakeKcal(d) - burned(d))
+    const gem = mean(balansen)
+    const perWeek = (gem * 7) / KCAL_PER_KG
+    const verbrand = mean(heleDagen.map(burned))
+    duidingen.push({
+      titel: `Caloriebalans: gemiddeld ${gem < 0 ? '−' : '+'}${Math.abs(Math.round(gem))} kcal per dag`,
+      toon: Math.abs(gem) < 100 ? 'neutral' : gem < 0 ? 'positive' : 'warning',
+      tekst: `Over ${s(heleDagen.length, 'dag', 'dagen')} waarop zowel je voeding als je verbranding compleet is — dat is de enige set waarop dit iets betekent. Je verbrandde daarop gemiddeld ${Math.round(
+        verbrand,
+      ).toLocaleString('nl-NL')} kcal. Bij dit tempo hoort ongeveer ${nf(Math.abs(perWeek), 2)} kg ${
+        perWeek < 0 ? 'verlies' : 'aankomst'
+      } per week. Zegt je weegschaal iets anders, geloof dan de weegschaal: porties worden vaker onderschat dan overschat.`,
+    })
+  } else if (gelogd.length >= 5) {
+    duidingen.push({
+      titel: 'Caloriebalans: nog niet te zeggen',
+      toon: 'neutral',
+      tekst: `Een balans vraagt dagen waarop zowel je voeding als je verbranding volledig is ingevuld; dat zijn er nu ${heleDagen.length}. Vanaf een dag of vijf komt hier een cijfer met een tempo per week te staan.`,
+    })
+  }
+
+  // ---------- weken, alleen als context bij het bovenstaande ----------
+  if (duidingen.length && gelogd.length >= 7) {
+    const minuten = Math.round(
+      gelogd.reduce((sum, d) => sum + Math.max(workoutMinutes(d), d.exerciseMin ?? 0), 0) / weken,
+    )
+    duidingen.push({
+      titel: `Beweging: ongeveer ${minuten} minuten per week`,
+      toon: minuten >= profile.exerciseGoalWeek ? 'positive' : 'warning',
+      tekst: `Gerekend over ${nf(weken, 1)} ${weken < 2 ? 'week' : 'weken'} sinds je eerste gelogde dag, tegen een doel van ${profile.exerciseGoalWeek} minuten.`,
+    })
+  }
+
+  return { periode, duidingen }
+}

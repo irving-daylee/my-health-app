@@ -3,6 +3,7 @@ import type { DayEntry, Profile } from '../types'
 import { Card } from '../components/inputs'
 import { balance, burned, nl, signed, sleepHours, trendDelta, weighIns, weightTrend } from '../lib/derive'
 import { backtest, learnEffects } from '../lib/predict'
+import { periodeDuiding } from '../lib/insights'
 
 const RANGES = [
   { label: '1 dag', days: 2 },
@@ -17,6 +18,10 @@ export default function Trends({ days, profile }: { days: DayEntry[]; profile: P
   const [range, setRange] = useState(30)
 
   const scoped = useMemo(() => days.slice(-range), [days, range])
+  // De duiding rekent bewust over de hele gelogde periode en niet over de
+  // gekozen schaal: bij '7 dagen' zou een conclusie over je gewoontes op een
+  // handvol dagen rusten.
+  const duiding = useMemo(() => periodeDuiding(days, profile), [days, profile])
   const raw = weighIns(scoped).map((d) => ({ date: d.date, value: d.body.weightKg! }))
   const trend = weightTrend(scoped)
 
@@ -153,6 +158,18 @@ export default function Trends({ days, profile }: { days: DayEntry[]; profile: P
           trekt het cijfer niet omlaag.
         </p>
       </Card>
+
+      {duiding.duidingen.length > 0 && (
+        <Card title="Wat die gemiddelden zeggen">
+          {duiding.duidingen.map((d) => (
+            <article className={`insight ${d.toon}`} key={d.titel}>
+              <h4>{d.titel}</h4>
+              <p>{d.tekst}</p>
+            </article>
+          ))}
+          <p className="note">{duiding.periode}</p>
+        </Card>
+      )}
 
       <Voorspellingscontrole days={days} />
     </>

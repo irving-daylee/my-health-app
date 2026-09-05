@@ -1407,3 +1407,190 @@ textarea {
   font-weight: 600;
   background: var(--white);
 }
+
+/* ---------- vanochtend tegenover de vorige weging ---------- */
+
+.blok-titel {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.blok-titel:not(:first-child) {
+  margin-top: 20px;
+}
+
+.verschil {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--grey-200);
+  font-size: 13px;
+}
+
+.verschil .naam {
+  font-weight: 600;
+}
+
+/* De sprong staat rechts naast de naam; de oude en nieuwe waarde eronder, want
+   die zijn ondersteunend en mogen de regel niet uit elkaar duwen. */
+.verschil .sprong {
+  grid-row: 1;
+  grid-column: 2;
+  font-weight: 700;
+  font-size: 15px;
+  text-align: right;
+}
+
+.verschil .waarden {
+  grid-column: 1 / -1;
+  color: var(--grey-600);
+  font-size: 12px;
+}
+
+.verschil .sprong.op {
+  color: var(--warn);
+}
+.verschil .sprong.neer {
+  color: var(--good);
+}
+.verschil .sprong.vlak {
+  color: var(--grey-600);
+}
+
+/* Binnen de ruis: wel te zien, maar duidelijk gedempt. */
+.verschil:not(.opvallend) .naam,
+.verschil:not(.opvallend) .sprong {
+  font-weight: 500;
+  color: var(--grey-400);
+}
+
+.verschil:not(.opvallend) .waarden {
+  color: var(--grey-400);
+}
+
+.verschil .waarden em {
+  font-style: normal;
+  margin-left: 8px;
+  color: var(--grey-400);
+}
+
+/* Een uitschieter krijgt kleur; de rest blijft grijs, ook omhoog of omlaag. */
+.verschil:not(.opvallend) .sprong.op,
+.verschil:not(.opvallend) .sprong.neer {
+  color: var(--grey-400);
+}
+
+.duiding {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--grey);
+  border-left: 3px solid var(--grey-400);
+}
+
+.duiding.positive {
+  border-left-color: var(--good);
+}
+.duiding.warning {
+  border-left-color: var(--warn);
+}
+
+.duiding strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.duiding p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--grey-600);
+}
+
+/* ---------- waar sta je ---------- */
+
+.peilingen {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.peiling {
+  border: 1px solid var(--grey-200);
+  border-radius: 10px;
+  padding: 12px 14px;
+  border-left-width: 3px;
+}
+
+.peiling.goed {
+  border-left-color: var(--good);
+}
+.peiling.grens {
+  border-left-color: var(--warn);
+}
+.peiling.hoog,
+.peiling.laag {
+  border-left-color: var(--bad);
+}
+
+.peiling-kop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.peiling-kop .naam {
+  font-weight: 600;
+}
+
+.peiling-kop .waarde {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.peiling-oordeel {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.peiling.goed .peiling-oordeel {
+  color: var(--good);
+}
+.peiling.grens .peiling-oordeel {
+  color: var(--warn);
+}
+.peiling.hoog .peiling-oordeel,
+.peiling.laag .peiling-oordeel {
+  color: var(--bad);
+}
+
+.peiling-oordeel em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--grey-600);
+  margin-left: 6px;
+}
+
+.peiling p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--grey-600);
+}
+
+.peiling-titel {
+  margin: 18px 0 8px;
+  font-size: 14px;
+}
+
+.adviezen {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
